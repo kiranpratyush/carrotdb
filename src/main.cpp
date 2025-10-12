@@ -7,6 +7,9 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <cassert>
+#include "utils/utils.h"
+#include "parser /parser.h"
 
 int main(int argc, char **argv)
 {
@@ -57,9 +60,30 @@ int main(int argc, char **argv)
 
   // Uncomment this block to pass the first stage
   //
-  accept(server_fd, (struct sockaddr *)&client_addr, (socklen_t *)&client_addr_len);
   std::cout << "Client connected\n";
-  //
+  std::string buffer;
+  size_t read_size{};
+  buffer.reserve(MAX_BUFFER_SIZE);
+  while (true)
+  {
+    buffer.resize(MAX_BUFFER_SIZE);
+    int client_fd = accept(server_fd, (struct sockaddr *)&client_addr, (socklen_t *)&client_addr_len);
+    assert(client_fd != -1);
+    if (client_fd < 0)
+    {
+      return 1;
+    }
+    read_size = read(client_fd, buffer.data(), MAX_BUFFER_SIZE);
+    if (read_size < 0)
+    {
+      perror("read");
+      return 1;
+    };
+    std::cout << buffer << std::endl;
+    std::string PONG{"+PONG\r\n"};
+    write(client_fd, PONG.data(), PONG.size()); // handle error here
+    close(client_fd);                           // This is worst performance, do a performance comparision.
+  }
   close(server_fd);
 
   return 0;
