@@ -17,5 +17,7 @@ namespace REDIS_NAMESPACE
         bool is_equal(std::string_view s1, std::string_view s2);
         void handle_ping(ClientContext &context);
         void handle_echo(ClientContext &context);
+        void handle_set(ClientContext &context);
+        void handle_get(ClientContext &context);
     };
 }
