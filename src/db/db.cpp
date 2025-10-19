@@ -24,7 +24,7 @@ namespace REDIS_NAMESPACE
         }
         else if (is_equal(slice, "SET"))
         {
-            handle_set(c);
+            handle_set(c, total_commands - 1);
         }
         else if (is_equal(slice, "GET"))
         {
@@ -36,10 +36,58 @@ namespace REDIS_NAMESPACE
         }
     }
 
-    void DB::handle_set(ClientContext &c)
+    void DB::handle_set(ClientContext &c, int total_commands)
     {
         ParsedToken key_token = Parser::Parse(c);
         ParsedToken value_token = Parser::Parse(c);
+        total_commands -= 2;
+        while (total_commands > 0)
+        {
+            ParsedToken optional_parameter = Parser::Parse(c);
+            if (optional_parameter.type == ParsedToken::Type::BULK_STRING)
+            {
+                std::string_view optional_arg{c.client.read_buffer.data() + optional_parameter.start_pos, optional_parameter.end_pos - optional_parameter.start_pos + 1};
+                if (is_equal(optional_arg, "EX"))
+                {
+                    ParsedToken parameter_value = Parser::Parse(c);
+                    if (parameter_value.type == ParsedToken::Type::BULK_STRING)
+                    {
+                        std::string_view possible_number{c.client.read_buffer.data() + parameter_value.start_pos, parameter_value.end_pos - parameter_value.start_pos + 1};
+                        unsigned long long time_in_seconds;
+                        if (convert_positive_string_to_number(possible_number, time_in_seconds))
+                        {
+                            // store here the item in the db
+                            auto steady_now = std::chrono::steady_clock::now();
+                            auto steady_expiration_time = steady_now + std::chrono::seconds(time_in_seconds);
+                            std::string key{c.client.read_buffer.data() + key_token.start_pos, key_token.end_pos - key_token.start_pos + 1};
+                            expiration[key] = steady_expiration_time;
+                            // store the steady time point in the db
+                        }
+                    }
+                }
+                else if (is_equal(optional_arg, "PX"))
+                {
+                    ParsedToken parameter_value = Parser::Parse(c);
+                    if (parameter_value.type == ParsedToken::Type::BULK_STRING)
+                    {
+                        std::string_view possible_number{c.client.read_buffer.data() + parameter_value.start_pos, parameter_value.end_pos - parameter_value.start_pos + 1};
+                        unsigned long long time_in_milliseconds;
+                        if (convert_positive_string_to_number(possible_number, time_in_milliseconds))
+                        {
+                            // store here the item in the db
+                            auto steady_now = std::chrono::steady_clock::now();
+                            auto steady_expiration_time = steady_now + std::chrono::milliseconds(time_in_milliseconds);
+                            std::string key{c.client.read_buffer.data() + key_token.start_pos, key_token.end_pos - key_token.start_pos + 1};
+                            expiration[key] = steady_expiration_time;
+                            // store the steady time point in the db
+                        }
+                    }
+                }
+                total_commands--;
+            }
+            total_commands--;
+        }
+        // Skip any additional arguments for simplicity
         if (key_token.type == ParsedToken::Type::BULK_STRING &&
             value_token.type == ParsedToken::Type::BULK_STRING)
         {
@@ -58,6 +106,19 @@ namespace REDIS_NAMESPACE
         {
             std::string key{c.client.read_buffer.data() + key_token.start_pos, key_token.end_pos - key_token.start_pos + 1};
             auto it = store.find(key);
+            // find if the key has expired
+            auto exp_it = expiration.find(key);
+            if (exp_it != expiration.end())
+            {
+                auto steady_now = std::chrono::steady_clock::now();
+                if (steady_now >= exp_it->second)
+                {
+                    // key has expired
+                    store.erase(it);
+                    expiration.erase(exp_it);
+                    it = store.end();
+                }
+            }
             if (it != store.end())
             {
                 const std::string &value = it->second;
