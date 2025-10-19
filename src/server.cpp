@@ -1,4 +1,5 @@
 #include "server.h"
+#include "utils/utils.h"
 
 namespace SERVER_NAMESPACE
 {
@@ -111,20 +112,18 @@ namespace SERVER_NAMESPACE
 
     int Server::handle_read(int fd)
     {
-        std::string buffer;
-        buffer.resize(300);
-        std::string accumulated_data; // Accumulate all read data
-
+        auto &client = active_clients[fd];
+        auto client_context = ClientContext{client};
+        char temp[300];
         while (true)
         {
             // read continuously while the read is acceptable
-            int size = read(fd, buffer.data(), 300);
+            int size = read(fd, temp, 300);
             if (size == -1)
             {
                 if (errno == EAGAIN || errno == EWOULDBLOCK)
                 {
-                    // We have completed reading all available data.
-                    // Now prepare for writing by registering EPOLLOUT event
+                    db.execute(client_context);
                     epoll_event event{};
                     event.events = EPOLLOUT | EPOLLET;
                     event.data.fd = fd;
@@ -132,12 +131,6 @@ namespace SERVER_NAMESPACE
                     {
                         perror("epoll_ctl MOD for write");
                         return -1;
-                    }
-
-                    // Process the accumulated data and prepare response
-                    if (!accumulated_data.empty())
-                    {
-                        std::cout << "Complete request received: " << accumulated_data << std::endl;
                     }
                     return 0; // Successfully read all available data
                 }
@@ -153,9 +146,8 @@ namespace SERVER_NAMESPACE
 
             if (size > 0)
             {
-                // Accumulate the received data
-                accumulated_data.append(buffer.data(), size);
-                std::cout << "Read " << size << " bytes" << std::endl;
+                std::cout << "Read " << size << " bytes from client" << std::endl;
+                active_clients[fd].read_buffer.append(temp, size);
                 continue; // Try to read more
             }
 
@@ -173,14 +165,13 @@ namespace SERVER_NAMESPACE
     int Server::handle_write(int fd)
     {
         // Prepare the response (for Redis, typically PONG)
-        std::string response = "+PONG\r\n";
-        const char *data = response.c_str();
-        size_t total_size = response.size();
+        const Client &client = active_clients[fd];
+        size_t total_size = client.write_buffer.size();
         size_t written = 0;
 
         while (written < total_size)
         {
-            int size = write(fd, data + written, total_size - written);
+            int size = write(fd, client.write_buffer.data() + written, total_size - written);
             if (size == -1)
             {
                 if (errno == EAGAIN || errno == EWOULDBLOCK)
@@ -194,6 +185,7 @@ namespace SERVER_NAMESPACE
                     // Real error occurred
                     perror("write");
                     epoll_ctl(epoll_instance_fd, EPOLL_CTL_DEL, fd, nullptr);
+                    active_clients.erase(fd);
                     close(fd);
                     return -1;
                 }
@@ -210,6 +202,9 @@ namespace SERVER_NAMESPACE
         epoll_event event{};
         event.events = EPOLLIN | EPOLLET;
         event.data.fd = fd;
+        // Clear the write buffer after sending
+        active_clients[fd].write_buffer.clear();
+        active_clients[fd].read_buffer.clear();
         if (epoll_ctl(epoll_instance_fd, EPOLL_CTL_MOD, fd, &event) == -1)
         {
             perror("epoll_ctl MOD back to read");
@@ -239,6 +234,7 @@ namespace SERVER_NAMESPACE
             }
 
             make_nonblocking(client_fd);
+            active_clients.emplace(client_fd, Client{MAX_BUFFER_SIZE});
             // add the client fd to the epoll instance for input events with edge triggered
             epoll_event client_event{};
             client_event.events = EPOLLIN | EPOLLET;

@@ -5,7 +5,7 @@
 #include <sys/types.h>
 #include <cassert>
 #include "utils/utils.h"
-#include "parser /parser.h"
+#include "parser/parser.h"
 #include "server.h"
 
 using namespace SERVER_NAMESPACE;

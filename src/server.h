@@ -8,6 +8,10 @@
 #include <cassert>
 #include <fcntl.h>
 #include <errno.h>
+#include <unordered_map>
+#include "models/client.h"
+#include "db/db.h"
+#include "utils/utils.h"
 
 namespace SERVER_NAMESPACE
 {
@@ -21,10 +25,12 @@ namespace SERVER_NAMESPACE
         int client_addr_len{};
         struct sockaddr_in server_addr{};
         u_int retry_count{0};
+        std::unordered_map<int, struct Client> active_clients{};
         int make_nonblocking(int &fd);
         int handle_write(int fd);
         int handle_read(int fd);
         int handle_new_client_connection();
+        REDIS_NAMESPACE::DB db{};
 
     public:
         Server()
