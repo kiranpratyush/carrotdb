@@ -22,6 +22,14 @@ namespace REDIS_NAMESPACE
         {
             handle_ping(c);
         }
+        else if (is_equal(slice, "SET"))
+        {
+            handle_set(c);
+        }
+        else if (is_equal(slice, "GET"))
+        {
+            handle_get(c);
+        }
         else
         {
             handle_ping(c);
