@@ -910,3 +910,10 @@ std::unique_ptr<unsigned char[]> lpAppendInteger(std::unique_ptr<unsigned char[]
     unsigned char *eofptr = lp.get() + listpack_bytes - 1;
     return lpInsertInteger(std::move(lp), lval, eofptr, LP_BEFORE, NULL);
 }
+std::unique_ptr<unsigned char[]> lpPrepend(std::unique_ptr<unsigned char[]> lp, unsigned char *s, uint32_t slen)
+{
+    unsigned char *p = lpFirst(lp.get());
+    if (!p)
+        return lpAppend(std::move(lp), s, slen);
+    return lpInsert(std::move(lp), s, NULL, slen, p, LP_BEFORE, NULL);
+}

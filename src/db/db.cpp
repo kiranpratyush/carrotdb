@@ -34,8 +34,10 @@ namespace REDIS_NAMESPACE
         }
         else if (is_equal(slice, "RPUSH"))
         {
-            handle_rpush(c, total_commands - 1);
+            handle_push(c, total_commands - 1, false);
         }
+        else if (is_equal(slice, "LPUSH"))
+            handle_push(c, total_commands - 1, true);
         else if (is_equal(slice, "LRANGE"))
         {
             handle_lrange(c);
@@ -112,7 +114,7 @@ namespace REDIS_NAMESPACE
         }
     }
 
-    void DB::handle_rpush(ClientContext &c, int total_commands)
+    void DB::handle_push(ClientContext &c, int total_commands, bool is_prepend)
     {
         ParsedToken key_token = Parser::Parse(c);
         total_commands--;
@@ -131,7 +133,10 @@ namespace REDIS_NAMESPACE
                 if (it == store.end())
                 {
                     auto listpackptr = lpNew(LIST_PACK_INITIAL_CAPACITY);
-                    listpackptr = lpAppend(std::move(listpackptr), value_ptr, value_len);
+                    if (is_prepend)
+                        listpackptr = lpPrepend(std::move(listpackptr), value_ptr, value_len);
+                    else
+                        listpackptr = lpAppend(std::move(listpackptr), value_ptr, value_len);
                     RedisObject redisObject{RedisObjectEncodingType::LIST_PACK, nullptr, std::move(listpackptr)};
                     store[key] = std::move(redisObject);
                     len = 1;
@@ -140,7 +145,11 @@ namespace REDIS_NAMESPACE
                 {
                     RedisObject &redisObject = it->second;
                     assert(redisObject.type == RedisObjectEncodingType::LIST_PACK);
-                    auto listpackPtr = lpAppend(std::move(redisObject.listPack), value_ptr, value_len);
+                    std::unique_ptr<unsigned char[]> listpackPtr{};
+                    if (is_prepend)
+                        listpackPtr = lpPrepend(std::move(redisObject.listPack), value_ptr, value_len);
+                    else
+                        listpackPtr = lpAppend(std::move(redisObject.listPack), value_ptr, value_len);
                     len = lpGetTotalNumElements(listpackPtr.get());
                     redisObject.listPack = std::move(listpackPtr);
                 }

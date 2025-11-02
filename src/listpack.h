@@ -239,3 +239,6 @@ std::unique_ptr<unsigned char[]> lpInsertInteger(std::unique_ptr<unsigned char[]
 std::unique_ptr<unsigned char[]> lpAppend(std::unique_ptr<unsigned char[]> lp, unsigned char *ele, uint32_t size);
 
 std::unique_ptr<unsigned char[]> lpAppendInteger(std::unique_ptr<unsigned char[]> lp, long long lval);
+
+/* Append the specified element 's' of length 'slen' at the head of the listpack. */
+std::unique_ptr<unsigned char[]> lpPrepend(std::unique_ptr<unsigned char[]> lp, unsigned char *s, uint32_t slen);
