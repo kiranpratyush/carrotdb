@@ -450,15 +450,17 @@ static inline uint64_t lpDecodeBacklen(unsigned char *p)
 static inline uint32_t lpCurrentEncodedSizeUnsafe(unsigned char *p)
 {
     if (LP_ENCODING_IS_7_BIT_UINT(p[0]))
-        return 1;
+        return 1; // 1 byte total (value embedded in header)
     if (LP_ENCODING_IS_13_BIT_INT(p[0]))
-        return 2;
+        return 2; // 2 bytes total (header + 1 byte)
     if (LP_ENCODING_IS_16_BIT_INT(p[0]))
-        return 3;
+        return 3; // 1 byte header + 2 bytes payload
+    if (LP_ENCODING_IS_24_BIT_INT(p[0]))
+        return 4; // 1 byte header + 3 bytes payload
     if (LP_ENCODING_IS_32_BIT_INT(p[0]))
-        return 4;
+        return 5; // 1 byte header + 4 bytes payload
     if (LP_ENCODING_IS_64_BIT_INT(p[0]))
-        return 5;
+        return 9; // 1 byte header + 8 bytes payload
     if (LP_ENCODING_IS_6_BIT_STR(p[0]))
     {
         return 1 + LP_ENCODING_6_BIT_STR_LEN(p); // This accesses only first byte hence safe
@@ -552,7 +554,7 @@ unsigned char *lpPrev(unsigned char *lp, unsigned char *p)
     /*Find the length of the payload+header*/
     uint64_t prevlen = lpDecodeBacklen(p);
     prevlen += lpEncodeBacklenBytes(prevlen); /*Calculate the total byte required to encode the payload+header of entry*/
-    p = p - (prevlen + 1);                    /*We are already at the last byte of prev entry we need to adjust*/
+    p = p - prevlen + 1;                      /*We are already at the last byte of prev entry we need to adjust*/
     lpAssertValidEntry(lp, lpGetTotalBytes(lp), p);
     return p;
 }
@@ -611,7 +613,7 @@ unsigned char *lpSeek(unsigned char *lp, long index)
     else
     {
         unsigned char *ele = lpLast(lp);
-        while (index > -1 && ele)
+        while (index < -1 && ele)
         {
             ele = lpPrev(lp, ele);
             index++;

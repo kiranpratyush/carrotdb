@@ -13,8 +13,6 @@ namespace REDIS_NAMESPACE
     {
     public:
         static ParsedToken Parse(ClientContext &clientContext);
-
-    private:
         static bool calculate_length(ClientContext &c, unsigned long &length);
     };
 }

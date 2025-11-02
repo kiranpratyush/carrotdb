@@ -1,4 +1,5 @@
 #pragma once
+#include <vector>
 #include "../parser/parser.h"
 #include "../utils/utils.h"
 #include "../models/redisObject.h"
@@ -26,5 +27,6 @@ namespace REDIS_NAMESPACE
         void handle_set(ClientContext &context, int total_commands);
         void handle_get(ClientContext &context);
         void handle_rpush(ClientContext &context, int total_commands);
+        void handle_lrange(ClientContext &context);
     };
 }
