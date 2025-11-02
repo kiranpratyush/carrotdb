@@ -111,33 +111,40 @@ namespace REDIS_NAMESPACE
     void DB::handle_rpush(ClientContext &c, int total_commands)
     {
         ParsedToken key_token = Parser::Parse(c);
-        ParsedToken value_token = Parser::Parse(c);
-        if (key_token.type == ParsedToken::Type::BULK_STRING && value_token.type == ParsedToken::Type::BULK_STRING)
+        total_commands--;
+        uint32_t len{};
+        while (total_commands > 0)
         {
-            // Check if the key exists in the store,get the redisObject if exists
-            std::string key{c.client.read_buffer.data() + key_token.start_pos, key_token.end_pos - key_token.start_pos + 1};
-            unsigned char *value_ptr = reinterpret_cast<unsigned char *>(
-                c.client.read_buffer.data() + value_token.start_pos);
-            uint32_t value_len = value_token.end_pos - value_token.start_pos + 1;
-            auto it = store.find(key);
-            if (it == store.end())
+            ParsedToken value_token = Parser::Parse(c);
+            if (key_token.type == ParsedToken::Type::BULK_STRING && value_token.type == ParsedToken::Type::BULK_STRING)
             {
-                auto listpackptr = lpNew(LIST_PACK_INITIAL_CAPACITY);
-                listpackptr = lpAppend(std::move(listpackptr), value_ptr, value_len);
-                RedisObject redisObject{RedisObjectEncodingType::LIST_PACK, nullptr, std::move(listpackptr)};
-                store[key] = std::move(redisObject);
-                c.client.write_buffer.append(":1\r\n");
-                c.current_write_position = 0;
-                return;
+                // Check if the key exists in the store,get the redisObject if exists
+                std::string key{c.client.read_buffer.data() + key_token.start_pos, key_token.end_pos - key_token.start_pos + 1};
+                unsigned char *value_ptr = reinterpret_cast<unsigned char *>(
+                    c.client.read_buffer.data() + value_token.start_pos);
+                uint32_t value_len = value_token.end_pos - value_token.start_pos + 1;
+                auto it = store.find(key);
+                if (it == store.end())
+                {
+                    auto listpackptr = lpNew(LIST_PACK_INITIAL_CAPACITY);
+                    listpackptr = lpAppend(std::move(listpackptr), value_ptr, value_len);
+                    RedisObject redisObject{RedisObjectEncodingType::LIST_PACK, nullptr, std::move(listpackptr)};
+                    store[key] = std::move(redisObject);
+                    len = 1;
+                }
+                else
+                {
+                    RedisObject &redisObject = it->second;
+                    assert(redisObject.type == RedisObjectEncodingType::LIST_PACK);
+                    auto listpackPtr = lpAppend(std::move(redisObject.listPack), value_ptr, value_len);
+                    len = lpGetTotalNumElements(listpackPtr.get());
+                    redisObject.listPack = std::move(listpackPtr);
+                }
             }
-            RedisObject &redisObject = it->second;
-            assert(redisObject.type == RedisObjectEncodingType::LIST_PACK);
-            auto listpackPtr = lpAppend(std::move(redisObject.listPack), value_ptr, value_len);
-            auto len = lpGetTotalNumElements(listpackPtr.get());
-            redisObject.listPack = std::move(listpackPtr);
-            c.client.write_buffer.append(":" + std::to_string(len) + "\r\n");
-            c.current_write_position = 0;
+            total_commands--;
         }
+        c.client.write_buffer.append(":" + std::to_string(len) + "\r\n");
+        c.current_write_position = 0;
     }
 
     void DB::handle_get(ClientContext &c)
