@@ -17,31 +17,27 @@ namespace REDIS_NAMESPACE
         std::string_view slice{c.client.read_buffer.data() + t.start_pos, t.end_pos - t.start_pos + 1};
 
         if (is_equal(slice, "ECHO"))
-        {
             handle_echo(c);
-        }
         else if (is_equal(slice, "PING"))
-        {
             handle_ping(c);
-        }
+
         else if (is_equal(slice, "SET"))
-        {
             handle_set(c, total_commands - 1);
-        }
+
         else if (is_equal(slice, "GET"))
-        {
             handle_get(c);
-        }
+
         else if (is_equal(slice, "RPUSH"))
-        {
             handle_push(c, total_commands - 1, false);
-        }
+
         else if (is_equal(slice, "LPUSH"))
             handle_push(c, total_commands - 1, true);
+
         else if (is_equal(slice, "LRANGE"))
-        {
             handle_lrange(c);
-        }
+
+        else if (is_equal(slice, "LLEN"))
+            handle_llen(c);
         else
         {
             handle_ping(c);
@@ -257,6 +253,29 @@ namespace REDIS_NAMESPACE
             c.client.write_buffer.append("$" + std::to_string(item.length()) + "\r\n");
             c.client.write_buffer.append(item + "\r\n");
         }
+        c.current_write_position = 0;
+    }
+
+    void DB::handle_llen(ClientContext &c)
+    {
+        ParsedToken key_token = Parser::Parse(c);
+        std::string key{c.client.read_buffer.data() + key_token.start_pos, key_token.end_pos - key_token.start_pos + 1};
+        auto it = store.find(key);
+        if (it == store.end())
+        {
+            c.client.write_buffer.append(":0\r\n");
+            c.current_write_position = 0;
+            return;
+        }
+        const RedisObject &redisObj = it->second;
+        if (redisObj.type != RedisObjectEncodingType::LIST_PACK || !redisObj.listPack)
+        {
+            c.client.write_buffer.append(":0\r\n");
+            c.current_write_position = 0;
+            return;
+        }
+        unsigned long list_length = lpLength(redisObj.listPack.get());
+        c.client.write_buffer.append(":" + std::to_string(list_length) + "\r\n");
         c.current_write_position = 0;
     }
 
