@@ -917,3 +917,7 @@ std::unique_ptr<unsigned char[]> lpPrepend(std::unique_ptr<unsigned char[]> lp, 
         return lpAppend(std::move(lp), s, slen);
     return lpInsert(std::move(lp), s, NULL, slen, p, LP_BEFORE, NULL);
 }
+std::unique_ptr<unsigned char[]> lpDelete(std::unique_ptr<unsigned char[]> lp, unsigned char *p, unsigned char **newp)
+{
+    return lpInsert(std::move(lp), NULL, NULL, 0, p, LP_REPLACE, newp);
+}

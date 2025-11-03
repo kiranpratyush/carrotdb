@@ -38,10 +38,12 @@ namespace REDIS_NAMESPACE
 
         else if (is_equal(slice, "LLEN"))
             handle_llen(c);
+
+        else if (is_equal(slice, "LPOP"))
+            handle_lpop(c);
+
         else
-        {
             handle_ping(c);
-        }
     }
 
     void DB::handle_set(ClientContext &c, int total_commands)
@@ -276,6 +278,57 @@ namespace REDIS_NAMESPACE
         }
         unsigned long list_length = lpLength(redisObj.listPack.get());
         c.client.write_buffer.append(":" + std::to_string(list_length) + "\r\n");
+        c.current_write_position = 0;
+    }
+
+    void DB::handle_lpop(ClientContext &c)
+    {
+        ParsedToken key_token = Parser::Parse(c);
+        std::string key{c.client.read_buffer.data() + key_token.start_pos, key_token.end_pos - key_token.start_pos + 1};
+        auto it = store.find(key);
+        if (it == store.end())
+        {
+            c.client.write_buffer.append("$-1\r\n");
+            c.current_write_position = 0;
+            return;
+        }
+        RedisObject &redisObj = it->second; // Remove const - we need to modify it
+        if (redisObj.type != RedisObjectEncodingType::LIST_PACK || !redisObj.listPack)
+        {
+            c.client.write_buffer.append("$-1\r\n");
+            c.current_write_position = 0;
+            return;
+        }
+        unsigned char *p = lpFirst(redisObj.listPack.get());
+        if (!p)
+        {
+            c.client.write_buffer.append("$-1\r\n");
+            c.current_write_position = 0;
+            return;
+        }
+
+        // Get the value before deleting
+        int64_t value_length;
+        unsigned char *valuePtr = lpGetWithSize(p, &value_length, nullptr);
+        std::string result;
+
+        if (valuePtr) // It's a string
+        {
+            result = std::string(reinterpret_cast<char *>(valuePtr), value_length);
+        }
+        else // It's an integer
+        {
+            result = std::to_string(value_length);
+        }
+
+        // Delete the first element (pass p, not valuePtr!)
+        auto listpackPtr = lpDelete(std::move(redisObj.listPack), p, nullptr);
+
+        // Store the modified listpack back
+        redisObj.listPack = std::move(listpackPtr);
+
+        // Build proper RESP bulk string response
+        c.client.write_buffer.append("$" + std::to_string(result.length()) + "\r\n" + result + "\r\n");
         c.current_write_position = 0;
     }
 

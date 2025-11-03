@@ -124,11 +124,11 @@ inline uint32_t lpGetTotalNumElements(unsigned char *lp)
 }
 inline void ASSERT_INTEGRITY(unsigned char *lp, unsigned char *p)
 {
-    assert(p > lp + LP_HEADER_SIZE && p < lp + lpGetTotalBytes(lp));
+    assert(p >= lp + LP_HEADER_SIZE && p < lp + lpGetTotalBytes(lp));
 }
 inline void ASSERT_INTEGRITY_LEN(unsigned char *lp, unsigned char *p, uint32_t len)
 {
-    assert(p > lp + LP_HEADER_SIZE && p + len < lp + lpGetTotalBytes(lp));
+    assert(p >= lp + LP_HEADER_SIZE && p + len < lp + lpGetTotalBytes(lp));
 }
 /*
  *validate each entry callback after successful validation moves next.
@@ -242,3 +242,5 @@ std::unique_ptr<unsigned char[]> lpAppendInteger(std::unique_ptr<unsigned char[]
 
 /* Append the specified element 's' of length 'slen' at the head of the listpack. */
 std::unique_ptr<unsigned char[]> lpPrepend(std::unique_ptr<unsigned char[]> lp, unsigned char *s, uint32_t slen);
+
+std::unique_ptr<unsigned char[]> lpDelete(std::unique_ptr<unsigned char[]> lp, unsigned char *p, unsigned char **newp);

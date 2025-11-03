@@ -29,5 +29,6 @@ namespace REDIS_NAMESPACE
         void handle_push(ClientContext &context, int total_commands, bool is_prepend);
         void handle_lrange(ClientContext &context);
         void handle_llen(ClientContext &context);
+        void handle_lpop(ClientContext &context);
     };
 }
