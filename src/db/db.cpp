@@ -351,8 +351,16 @@ namespace REDIS_NAMESPACE
             c.current_write_position = 0;
             return;
         }
+        else if (result.size() == 1)
+        {
+            // Single result - encode as bulk string
+            c.client.write_buffer.append("$" + std::to_string(result[0].length()) + "\r\n");
+            c.client.write_buffer.append(result[0] + "\r\n");
+            c.current_write_position = 0;
+        }
         else
         {
+            // Multiple results - encode as array
             c.client.write_buffer.append("*" + std::to_string(result.size()) + "\r\n");
             for (const auto &item : result)
             {
