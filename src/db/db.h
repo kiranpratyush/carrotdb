@@ -26,8 +26,6 @@ namespace REDIS_NAMESPACE
         std::unordered_map<std::string, RedisObject> store{};
         std::unordered_map<std::string, std::chrono::steady_clock::time_point> expiration{};
         std::unordered_map<std::string, std::queue<BlockedClient>> blocked_keys{};
-
-        bool is_equal(std::string_view s1, std::string_view s2);
         void handle_ping(ClientContext &context);
         void handle_echo(ClientContext &context);
         void handle_set(ClientContext &context, int total_commands);
@@ -38,8 +36,6 @@ namespace REDIS_NAMESPACE
         void handle_lpop(ClientContext &context, int total_comands);
         void handle_blpop(ClientContext &context, int total_comands);
         void signal_key_ready(const std::string &key, ClientContext &context);
-
-        // Push helper methods
         void write_blpop_response(std::shared_ptr<Client> &client, const std::string &key, const std::string &value);
         bool handle_blocked_key_push(ClientContext &c, int &total_commands, const std::string &key);
         uint32_t create_new_list(const std::string &key, unsigned char *value_ptr, uint32_t value_len, bool is_prepend);
