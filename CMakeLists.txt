@@ -12,5 +12,7 @@ find_package(asio CONFIG REQUIRED)
 
 add_executable(redis ${SOURCE_FILES})
 
+target_include_directories(redis PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
 target_link_libraries(redis PRIVATE asio asio::asio)
 target_link_libraries(redis PRIVATE Threads::Threads)

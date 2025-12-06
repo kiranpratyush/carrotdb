@@ -2,6 +2,11 @@
 #include <string>
 
 #define MAX_BUFFER_SIZE 4096
+
+// #ifndef REDIS_NAMESPACE
+// #define REDIS_NAMESPACE redis
+// #endif
+
 namespace REDIS_NAMESPACE
 {
     inline bool convert_positive_string_to_number(std::string_view s, unsigned long long &number)

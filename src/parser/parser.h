@@ -8,7 +8,6 @@ using namespace SERVER_NAMESPACE;
 
 namespace REDIS_NAMESPACE
 {
-
     class Parser
     {
     public:

@@ -1,10 +1,11 @@
 #pragma once
 #include <vector>
-#include "../parser/parser.h"
 #include "../utils/utils.h"
+#include "../parser/parser.h"
 #include "../models/redisObject.h"
 #include <string>
 #include <unordered_map>
+#include <queue>
 #include <cctype>
 #include <chrono>
 
@@ -21,6 +22,9 @@ namespace REDIS_NAMESPACE
     private:
         std::unordered_map<std::string, RedisObject> store{};
         std::unordered_map<std::string, std::chrono::steady_clock::time_point> expiration{};
+
+        std::unordered_map<std::string, std::queue<std::pair<std::weak_ptr<Client>, int>>> blocked_keys{};
+
         bool is_equal(std::string_view s1, std::string_view s2);
         void handle_ping(ClientContext &context);
         void handle_echo(ClientContext &context);
@@ -30,5 +34,14 @@ namespace REDIS_NAMESPACE
         void handle_lrange(ClientContext &context);
         void handle_llen(ClientContext &context);
         void handle_lpop(ClientContext &context, int total_comands);
+        void handle_blpop(ClientContext &context, int total_comands);
+        void signal_key_ready(const std::string &key, ClientContext &context);
+
+        // Push helper methods
+        void write_blpop_response(std::shared_ptr<Client> &client, const std::string &key, const std::string &value);
+        bool handle_blocked_key_push(ClientContext &c, int &total_commands, const std::string &key);
+        uint32_t create_new_list(const std::string &key, unsigned char *value_ptr, uint32_t value_len, bool is_prepend);
+        uint32_t append_to_existing_list(RedisObject &redisObject, unsigned char *value_ptr, uint32_t value_len, bool is_prepend);
+        uint32_t push_value_to_list(const std::string &key, unsigned char *value_ptr, uint32_t value_len, bool is_prepend);
     };
 }

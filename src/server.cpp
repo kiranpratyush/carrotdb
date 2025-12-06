@@ -60,7 +60,6 @@ namespace SERVER_NAMESPACE
             perror("epoll_create1");
             return;
         }
-
         // register the server_fd for EPOLL_IN event
         epoll_event event{};
         event.events = EPOLLIN | EPOLLET;
@@ -70,8 +69,6 @@ namespace SERVER_NAMESPACE
             perror("epoll_ctl");
             return;
         }
-        struct sockaddr_in client_addr;
-        int client_addr_len = sizeof(client_addr);
         epoll_event events[10];
         while (true)
         {
@@ -112,31 +109,48 @@ namespace SERVER_NAMESPACE
 
     int Server::handle_read(int fd)
     {
-        auto &client = active_clients[fd];
-        auto client_context = ClientContext{client};
+        auto client = active_clients[fd];
+        auto client_context = ClientContext{client, fd};
         char temp[300];
         while (true)
         {
-            // read continuously while the read is acceptable
             int size = read(fd, temp, 300);
             if (size == -1)
             {
                 if (errno == EAGAIN || errno == EWOULDBLOCK)
                 {
                     db.execute(client_context);
-                    epoll_event event{};
-                    event.events = EPOLLOUT | EPOLLET;
-                    event.data.fd = fd;
-                    if (epoll_ctl(epoll_instance_fd, EPOLL_CTL_MOD, fd, &event) == -1)
+
+                    // If client is not blocked, make it ready for writing
+                    if (!client_context.isBlocked)
                     {
-                        perror("epoll_ctl MOD for write");
-                        return -1;
+                        epoll_event event{};
+                        event.events = EPOLLOUT | EPOLLET;
+                        event.data.fd = fd;
+                        if (epoll_ctl(epoll_instance_fd, EPOLL_CTL_MOD, fd, &event) == -1)
+                        {
+                            perror("epoll_ctl MOD for write");
+                            return -1;
+                        }
                     }
+
+                    // If any client was unblocked, make it ready for writing
+                    if (client_context.unblocked_client_fd != -1)
+                    {
+                        epoll_event event{};
+                        event.events = EPOLLOUT | EPOLLET;
+                        event.data.fd = client_context.unblocked_client_fd;
+                        if (epoll_ctl(epoll_instance_fd, EPOLL_CTL_MOD, client_context.unblocked_client_fd, &event) == -1)
+                        {
+                            perror("epoll_ctl MOD for write (unblocked client)");
+                            return -1;
+                        }
+                    }
+
                     return 0; // Successfully read all available data
                 }
                 else
                 {
-                    // Real error occurred
                     perror("read");
                     epoll_ctl(epoll_instance_fd, EPOLL_CTL_DEL, fd, nullptr);
                     close(fd);
@@ -147,8 +161,8 @@ namespace SERVER_NAMESPACE
             if (size > 0)
             {
                 std::cout << "Read " << size << " bytes from client" << std::endl;
-                active_clients[fd].read_buffer.append(temp, size);
-                continue; // Try to read more
+                client->read_buffer.append(temp, size);
+                continue;
             }
 
             if (size == 0)
@@ -164,14 +178,13 @@ namespace SERVER_NAMESPACE
 
     int Server::handle_write(int fd)
     {
-        // Prepare the response (for Redis, typically PONG)
-        const Client &client = active_clients[fd];
-        size_t total_size = client.write_buffer.size();
+        auto client = active_clients[fd];
+        size_t total_size = client->write_buffer.size();
         size_t written = 0;
 
         while (written < total_size)
         {
-            int size = write(fd, client.write_buffer.data() + written, total_size - written);
+            int size = write(fd, client->write_buffer.data() + written, total_size - written);
             if (size == -1)
             {
                 if (errno == EAGAIN || errno == EWOULDBLOCK)
@@ -203,8 +216,8 @@ namespace SERVER_NAMESPACE
         event.events = EPOLLIN | EPOLLET;
         event.data.fd = fd;
         // Clear the write buffer after sending
-        active_clients[fd].write_buffer.clear();
-        active_clients[fd].read_buffer.clear();
+        client->write_buffer.clear();
+        client->read_buffer.clear();
         if (epoll_ctl(epoll_instance_fd, EPOLL_CTL_MOD, fd, &event) == -1)
         {
             perror("epoll_ctl MOD back to read");
@@ -234,8 +247,7 @@ namespace SERVER_NAMESPACE
             }
 
             make_nonblocking(client_fd);
-            active_clients.emplace(client_fd, Client{MAX_BUFFER_SIZE});
-            // add the client fd to the epoll instance for input events with edge triggered
+            active_clients.emplace(client_fd, std::make_shared<Client>(MAX_BUFFER_SIZE));
             epoll_event client_event{};
             client_event.events = EPOLLIN | EPOLLET;
             client_event.data.fd = client_fd;

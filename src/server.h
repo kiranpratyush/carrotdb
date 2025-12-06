@@ -25,7 +25,7 @@ namespace SERVER_NAMESPACE
         int client_addr_len{};
         struct sockaddr_in server_addr{};
         u_int retry_count{0};
-        std::unordered_map<int, struct Client> active_clients{};
+        std::unordered_map<int, std::shared_ptr<Client>> active_clients{};
         int make_nonblocking(int &fd);
         int handle_write(int fd);
         int handle_read(int fd);

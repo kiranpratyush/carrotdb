@@ -1045,3 +1045,6 @@ dkms.conf
 *.dis
 
 vcpkg_installed
+
+# gdb related file 
+.gdb_history
