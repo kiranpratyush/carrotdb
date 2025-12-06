@@ -30,6 +30,9 @@ namespace SERVER_NAMESPACE
         int handle_write(int fd);
         int handle_read(int fd);
         int handle_new_client_connection();
+        void handle_expired_blocked_clients();
+
+    public:
         REDIS_NAMESPACE::DB db{};
 
     public:
@@ -50,5 +53,7 @@ namespace SERVER_NAMESPACE
             }
         }
         void run(std::string &buffer, int buffer_size);
+
+    private:
     };
 }

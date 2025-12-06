@@ -1,8 +1,10 @@
 #pragma once
 #include <vector>
-#include "../utils/utils.h"
-#include "../parser/parser.h"
-#include "../models/redisObject.h"
+#include "utils/utils.h"
+#include "listpack.h"
+#include "parser/parser.h"
+#include "models/client.h"
+#include "models/redisObject.h"
 #include <string>
 #include <unordered_map>
 #include <queue>
@@ -13,17 +15,17 @@
 
 namespace REDIS_NAMESPACE
 {
-
     class DB
     {
     public:
         void execute(ClientContext &context);
+        std::vector<int> check_and_expire_blocked_clients();
+        int get_next_timeout_ms();
 
     private:
         std::unordered_map<std::string, RedisObject> store{};
         std::unordered_map<std::string, std::chrono::steady_clock::time_point> expiration{};
-
-        std::unordered_map<std::string, std::queue<std::pair<std::weak_ptr<Client>, int>>> blocked_keys{};
+        std::unordered_map<std::string, std::queue<BlockedClient>> blocked_keys{};
 
         bool is_equal(std::string_view s1, std::string_view s2);
         void handle_ping(ClientContext &context);

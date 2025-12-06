@@ -1,5 +1,4 @@
 #include "db/db.h"
-#include "listpack.h"
 
 namespace REDIS_NAMESPACE
 {
@@ -7,7 +6,7 @@ namespace REDIS_NAMESPACE
     {
         auto client = context.client;
         auto *read_buffer = client->read_buffer.data();
-        uint32_t expiration_time = 0;
+        double expiration_time = 0.0;
 
         ParsedToken key_token = Parser::Parse(context);
         std::string key{read_buffer + key_token.start_pos, key_token.end_pos - key_token.start_pos + 1};
@@ -20,11 +19,11 @@ namespace REDIS_NAMESPACE
                                                expire_timeout_token.end_pos - expire_timeout_token.start_pos + 1};
             try
             {
-                expiration_time = std::stoll(expire_time_out_string);
+                expiration_time = std::stod(expire_time_out_string);
             }
             catch (...)
             {
-                expiration_time = 0;
+                expiration_time = 0.0;
             }
         }
 
@@ -32,7 +31,7 @@ namespace REDIS_NAMESPACE
         if (it == store.end())
         {
             context.isBlocked = true;
-            blocked_keys[key].push({context.client, context.client_fd});
+            blocked_keys[key].push(BlockedClient{context.client, context.client_fd, expiration_time});
             return;
         }
 
@@ -48,7 +47,7 @@ namespace REDIS_NAMESPACE
         if (!p)
         {
             context.isBlocked = true;
-            blocked_keys[key].push({context.client, context.client_fd});
+            blocked_keys[key].push(BlockedClient{context.client, context.client_fd, expiration_time});
             return;
         }
 
@@ -70,5 +69,40 @@ namespace REDIS_NAMESPACE
 
         write_blpop_response(client, key, value);
         context.current_write_position = 0;
+    }
+    int DB::get_next_timeout_ms()
+    {
+        if (blocked_keys.empty())
+        {
+            return -1;
+        }
+
+        auto now = std::chrono::steady_clock::now();
+        auto min_timeout = std::chrono::steady_clock::time_point::max();
+
+        for (const auto &[key, client_queue] : blocked_keys)
+        {
+            if (!client_queue.empty())
+            {
+                const BlockedClient &front_client = client_queue.front();
+                if (front_client.timeout_at < min_timeout)
+                {
+                    min_timeout = front_client.timeout_at;
+                }
+            }
+        }
+
+        if (min_timeout == std::chrono::steady_clock::time_point::max())
+        {
+            return -1;
+        }
+
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(min_timeout - now);
+        if (duration.count() <= 0)
+        {
+            return 0;
+        }
+
+        return static_cast<int>(duration.count());
     }
 }

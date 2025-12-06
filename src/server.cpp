@@ -72,12 +72,17 @@ namespace SERVER_NAMESPACE
         epoll_event events[10];
         while (true)
         {
-            int n = epoll_wait(epoll_instance_fd, events, 10, -1);
+            // Get the timeout for the next blocked client to expire
+            int timeout_ms = db.get_next_timeout_ms();
+            int n = epoll_wait(epoll_instance_fd, events, 10, timeout_ms);
             if (n == -1)
             {
                 perror("epoll_wait");
                 break;
             }
+
+            // Check for expired blocked clients (timeout occurred or after processing events)
+            handle_expired_blocked_clients();
             for (int i = 0; i < n; i++)
             {
                 // If the event is from server_fd continously accept the client request
@@ -256,6 +261,23 @@ namespace SERVER_NAMESPACE
                 perror("epoll_ctl client");
                 close(client_fd);
                 return -1;
+            }
+        }
+    }
+
+    void Server::handle_expired_blocked_clients()
+    {
+        std::vector<int> expired_fds = db.check_and_expire_blocked_clients();
+
+        for (int fd : expired_fds)
+        {
+            // Make the expired client ready for writing (to send timeout response)
+            epoll_event event{};
+            event.events = EPOLLOUT | EPOLLET;
+            event.data.fd = fd;
+            if (epoll_ctl(epoll_instance_fd, EPOLL_CTL_MOD, fd, &event) == -1)
+            {
+                perror("epoll_ctl MOD for expired client");
             }
         }
     }

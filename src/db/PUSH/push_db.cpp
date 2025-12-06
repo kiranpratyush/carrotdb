@@ -21,7 +21,7 @@ namespace REDIS_NAMESPACE
         }
 
         // Get the first blocked client from the queue
-        auto blocked_client_pair = blocked_it->second.front();
+        BlockedClient blocked_client = blocked_it->second.front();
         blocked_it->second.pop();
 
         // If queue is now empty, remove the key entry
@@ -30,7 +30,7 @@ namespace REDIS_NAMESPACE
             blocked_keys.erase(blocked_it);
         }
 
-        auto blocked_client_ptr = blocked_client_pair.first.lock();
+        auto blocked_client_ptr = blocked_client.client.lock();
         if (blocked_client_ptr)
         {
             ParsedToken value_token = Parser::Parse(c);
@@ -40,7 +40,7 @@ namespace REDIS_NAMESPACE
                                   value_token.end_pos - value_token.start_pos + 1};
 
                 write_blpop_response(blocked_client_ptr, key, value);
-                c.unblocked_client_fd = blocked_client_pair.second;
+                c.unblocked_client_fd = blocked_client.client_fd;
             }
         }
 

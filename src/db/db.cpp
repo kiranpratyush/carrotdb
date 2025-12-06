@@ -403,7 +403,7 @@ namespace REDIS_NAMESPACE
         auto it = blocked_keys.find(key);
         if (it != blocked_keys.end() && !it->second.empty())
         {
-            auto blocked_client_pair = it->second.front();
+            BlockedClient blocked_client = it->second.front();
             it->second.pop();
 
             // If queue is now empty, remove the key entry
@@ -412,12 +412,63 @@ namespace REDIS_NAMESPACE
                 blocked_keys.erase(it);
             }
 
-            auto client_ptr = blocked_client_pair.first.lock();
+            auto client_ptr = blocked_client.client.lock();
             if (client_ptr)
             {
                 // Store the unblocked client fd so server can make it ready for write
-                context.unblocked_client_fd = blocked_client_pair.second;
+                context.unblocked_client_fd = blocked_client.client_fd;
             }
         }
     }
+
+    std::vector<int> DB::check_and_expire_blocked_clients()
+    {
+        std::vector<int> expired_fds;
+        std::vector<std::string> keys_to_remove;
+
+        for (auto &[key, client_queue] : blocked_keys)
+        {
+            std::queue<BlockedClient> new_queue;
+
+            while (!client_queue.empty())
+            {
+                BlockedClient blocked_client = client_queue.front();
+                client_queue.pop();
+
+                if (blocked_client.is_expired())
+                {
+                    // Client timed out - send null response
+                    auto client_ptr = blocked_client.client.lock();
+                    if (client_ptr)
+                    {
+                        client_ptr->write_buffer.append("*-1\r\n"); // Null array for timeout
+                        expired_fds.push_back(blocked_client.client_fd);
+                    }
+                }
+                else
+                {
+                    // Still valid, keep in queue
+                    new_queue.push(blocked_client);
+                }
+            }
+
+            if (new_queue.empty())
+            {
+                keys_to_remove.push_back(key);
+            }
+            else
+            {
+                client_queue = std::move(new_queue);
+            }
+        }
+
+        // Remove keys with no blocked clients
+        for (const auto &key : keys_to_remove)
+        {
+            blocked_keys.erase(key);
+        }
+
+        return expired_fds;
+    }
+
 }
