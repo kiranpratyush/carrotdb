@@ -26,7 +26,9 @@ namespace REDIS_NAMESPACE
             handle_set(c, total_commands - 1);
 
         else if (is_equal(slice, "GET"))
-            handle_get(c);
+            handle_get_or_type(c, false);
+        else if (is_equal(slice, "TYPE"))
+            handle_get_or_type(c, true);
 
         else if (is_equal(slice, "RPUSH"))
             handle_push(c, total_commands - 1, false);
@@ -66,7 +68,7 @@ namespace REDIS_NAMESPACE
         }
     }
 
-        void DB::signal_key_ready(const std::string &key, ClientContext &context)
+    void DB::signal_key_ready(const std::string &key, ClientContext &context)
     {
         auto it = blocked_keys.find(key);
         if (it != blocked_keys.end() && !it->second.empty())

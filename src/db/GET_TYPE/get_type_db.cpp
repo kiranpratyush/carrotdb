@@ -2,7 +2,7 @@
 
 namespace REDIS_NAMESPACE
 {
-    void DB::handle_get(ClientContext &c)
+    void DB::handle_get_or_type(ClientContext &c, bool isTypeCommand = false)
     {
         ParsedToken key_token = Parser::Parse(c);
         if (key_token.type == ParsedToken::Type::BULK_STRING)
@@ -27,12 +27,22 @@ namespace REDIS_NAMESPACE
                 const RedisObject &redisObject = it->second;
                 if (redisObject.type == RedisObjectEncodingType::STRING)
                 {
-                    c.client->write_buffer.append("$" + std::to_string(redisObject.stringPtr->length()) + "\r\n" + *redisObject.stringPtr + "\r\n");
+                    if (isTypeCommand)
+                    {
+                        c.client->write_buffer.append("+string\r\n");
+                    }
+                    else
+                    {
+                        c.client->write_buffer.append("$" + std::to_string(redisObject.stringPtr->length()) + "\r\n" + *redisObject.stringPtr + "\r\n");
+                    }
                 }
             }
             else
             {
-                c.client->write_buffer.append("$-1\r\n");
+                if (isTypeCommand)
+                    c.client->write_buffer.append("+none\r\n");
+                else
+                    c.client->write_buffer.append("$-1\r\n");
             }
             c.current_write_position = 0;
         }

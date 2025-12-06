@@ -29,7 +29,7 @@ namespace REDIS_NAMESPACE
         void handle_ping(ClientContext &context);
         void handle_echo(ClientContext &context);
         void handle_set(ClientContext &context, int total_commands);
-        void handle_get(ClientContext &context);
+        void handle_get_or_type(ClientContext &context, bool isType);
         void handle_push(ClientContext &context, int total_commands, bool is_prepend);
         void handle_lrange(ClientContext &context);
         void handle_llen(ClientContext &context);
