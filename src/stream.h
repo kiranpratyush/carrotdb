@@ -10,7 +10,8 @@ namespace REDIS_NAMESPACE
     {
         OK,
         INVALID_ID_FORMAT,
-        ID_NOT_GREATER_THAN_LAST
+        ID_NOT_GREATER_THAN_LAST,
+        NOT_GREATER_THAN_ZERO
     };
 
     struct StreamID

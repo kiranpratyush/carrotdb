@@ -11,6 +11,8 @@ namespace REDIS_NAMESPACE
             // Invalid stream ID format
             return StreamErrorType::INVALID_ID_FORMAT;
         }
+        if (sid.ms == 0 && sid.seq == 0)
+            return StreamErrorType::NOT_GREATER_THAN_ZERO;
 
         // Step 2: Check if the new ID is greater than the last inserted ID
         if (lastInsertStreamID.ms != 0 || lastInsertStreamID.seq != 0)
@@ -33,7 +35,7 @@ namespace REDIS_NAMESPACE
 
         // Update last inserted stream ID
         lastInsertStreamID = sid;
-        
+
         return StreamErrorType::OK;
     }
 }
