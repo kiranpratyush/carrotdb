@@ -36,6 +36,13 @@ namespace REDIS_NAMESPACE
                         c.client->write_buffer.append("$" + std::to_string(redisObject.stringPtr->length()) + "\r\n" + *redisObject.stringPtr + "\r\n");
                     }
                 }
+                else if (redisObject.type == RedisObjectEncodingType::STREAM)
+                {
+                    if (isTypeCommand)
+                    {
+                        c.client->write_buffer.append("+stream\r\n");
+                    }
+                }
             }
             else
             {

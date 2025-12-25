@@ -47,6 +47,8 @@ namespace REDIS_NAMESPACE
 
         else if (is_equal(slice, "BLPOP"))
             handle_blpop(c, total_commands - 1);
+        else if (is_equal(slice, "XADD"))
+            handle_xadd(c, total_commands - 1);
         else
             handle_ping(c);
     }
