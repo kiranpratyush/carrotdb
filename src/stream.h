@@ -13,6 +13,11 @@ namespace REDIS_NAMESPACE
         ID_NOT_GREATER_THAN_LAST,
         NOT_GREATER_THAN_ZERO
     };
+    struct StreamStatus
+    {
+        StreamErrorType error{StreamErrorType::OK};
+        std::string streamid{};
+    };
 
     struct StreamID
     {
@@ -79,26 +84,6 @@ namespace REDIS_NAMESPACE
         {
             return std::to_string(ms) + "-" + std::to_string(seq);
         }
-        static inline bool fromString(std::string_view str, StreamID &out)
-        {
-            // Parse format: "ms-seq" (e.g., "1526919030474-0")
-            size_t dashPos = str.find('-');
-            if (dashPos == std::string_view::npos)
-                return false;
-
-            std::string_view msStr = str.substr(0, dashPos);
-            std::string_view seqStr = str.substr(dashPos + 1);
-
-            unsigned long long ms_val, seq_val;
-            if (!convert_positive_string_to_number(msStr, ms_val))
-                return false;
-            if (!convert_positive_string_to_number(seqStr, seq_val))
-                return false;
-
-            out.ms = ms_val;
-            out.seq = seq_val;
-            return true;
-        }
     };
 
     class Stream
@@ -108,7 +93,8 @@ namespace REDIS_NAMESPACE
         StreamID lastInsertStreamID{};
 
     public:
-        StreamErrorType insert(std::string_view streamId, std::string_view value);
+        StreamStatus insert(std::string_view streamId, std::string_view value);
         inline StreamID getLastInsertedID() const { return lastInsertStreamID; }
+        bool fromString(std::string_view str, StreamID &out);
     };
 }

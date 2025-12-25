@@ -24,21 +24,21 @@ namespace REDIS_NAMESPACE
         }
 
         // Insert into the stream
-        StreamErrorType error = it->second.streamPtr->insert(stream_id, raw_value);
+        StreamStatus status = it->second.streamPtr->insert(stream_id, raw_value);
 
-        if (error != StreamErrorType::OK)
+        if (status.error != StreamErrorType::OK)
         {
             // Handle error
-            if (error == StreamErrorType::INVALID_ID_FORMAT)
+            if (status.error == StreamErrorType::INVALID_ID_FORMAT)
             {
                 c.client->write_buffer.append("-ERR Invalid stream ID format\r\n");
             }
-            else if (error == StreamErrorType::ID_NOT_GREATER_THAN_LAST)
+            else if (status.error == StreamErrorType::ID_NOT_GREATER_THAN_LAST)
             {
                 std::string lastID = it->second.streamPtr->getLastInsertedID().toString();
                 c.client->write_buffer.append("-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n");
             }
-            else if (error == StreamErrorType::NOT_GREATER_THAN_ZERO)
+            else if (status.error == StreamErrorType::NOT_GREATER_THAN_ZERO)
             {
                 c.client->write_buffer.append("-ERR The ID specified in XADD must be greater than 0-0\r\n");
             }
@@ -47,8 +47,8 @@ namespace REDIS_NAMESPACE
         }
 
         // Success response
-        c.client->write_buffer.append("$" + std::to_string(stream_id.length()) + "\r\n");
-        c.client->write_buffer.append(stream_id + "\r\n");
+        c.client->write_buffer.append("$" + std::to_string(status.streamid.length()) + "\r\n");
+        c.client->write_buffer.append(status.streamid + "\r\n");
         c.current_write_position = 0;
     }
 }
