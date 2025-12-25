@@ -36,7 +36,7 @@ namespace REDIS_NAMESPACE
             else if (error == StreamErrorType::ID_NOT_GREATER_THAN_LAST)
             {
                 std::string lastID = it->second.streamPtr->getLastInsertedID().toString();
-                c.client->write_buffer.append("-ERR The ID specified in XADD must be greater than " + lastID + "\r\n");
+                c.client->write_buffer.append("-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n");
             }
             else if (error == StreamErrorType::NOT_GREATER_THAN_ZERO)
             {
