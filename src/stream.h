@@ -74,6 +74,10 @@ namespace REDIS_NAMESPACE
             // ms values are equal, compare seq
             return seq > other.seq;
         }
+        inline std::string toString() const
+        {
+            return std::to_string(ms) + "-" + std::to_string(seq);
+        }
         static inline bool fromString(std::string_view str, StreamID &out)
         {
             // Parse format: "ms-seq" (e.g., "1526919030474-0")
@@ -104,5 +108,6 @@ namespace REDIS_NAMESPACE
 
     public:
         StreamErrorType insert(std::string_view streamId, std::string_view value);
+        inline StreamID getLastInsertedID() const { return lastInsertStreamID; }
     };
 }
