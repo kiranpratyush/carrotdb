@@ -38,4 +38,12 @@ namespace REDIS_NAMESPACE
         }
         return true;
     }
+    static inline uint64_t toBigEndian64(uint64_t x)
+    {
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+        return __builtin_bswap64(x);
+#else
+        return x;
+#endif
+    }
 }

@@ -2,7 +2,7 @@
 
 #include <string>
 #include <memory>
-#include "radix-tree.h"
+#include "stream.h"
 
 enum class RedisObjectEncodingType
 {
@@ -11,10 +11,13 @@ enum class RedisObjectEncodingType
     STREAM
 };
 
-struct RedisObject
+namespace REDIS_NAMESPACE
 {
-    RedisObjectEncodingType type{};
-    std::unique_ptr<std::string> stringPtr{};
-    std::unique_ptr<unsigned char[]> listPack{};
-    std::unique_ptr<RadixTree> radixTreePtr{};
-};
+    struct RedisObject
+    {
+        RedisObjectEncodingType type{};
+        std::unique_ptr<std::string> stringPtr{};
+        std::unique_ptr<unsigned char[]> listPack{};
+        std::unique_ptr<Stream> streamPtr{};
+    };
+}
