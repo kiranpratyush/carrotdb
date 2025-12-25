@@ -1,4 +1,5 @@
 #pragma once
+#include <chrono>
 #include <string>
 
 #define MAX_BUFFER_SIZE 4096
@@ -37,6 +38,14 @@ namespace REDIS_NAMESPACE
             }
         }
         return true;
+    }
+    inline uint64_t time_since_epoch_millisec()
+    {
+        using namespace std::chrono;
+        auto now = system_clock::now();
+        auto since_epoch = now.time_since_epoch();
+        auto millis = duration_cast<milliseconds>(since_epoch);
+        return millis.count();
     }
 
 }

@@ -40,7 +40,18 @@ namespace REDIS_NAMESPACE
     }
     bool Stream::fromString(std::string_view str, StreamID &out)
     {
-
+        if (str == "*")
+        {
+            uint64_t millisecond = time_since_epoch_millisec();
+            uint64_t seq = 0;
+            if (lastInsertStreamID.ms == millisecond)
+            {
+                seq++;
+            }
+            out.ms = millisecond;
+            out.seq = seq;
+            return true;
+        }
         size_t dashPos = str.find('-');
         if (dashPos == std::string_view::npos)
             return false;
