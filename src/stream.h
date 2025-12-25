@@ -19,24 +19,50 @@ namespace REDIS_NAMESPACE
         uint64_t seq{};
         inline std::string toBinary() const
         {
-            uint64_t ms_be = toBigEndian64(ms);
-            uint64_t seq_be = toBigEndian64(seq);
             std::string out;
             out.resize(16);
-            std::memcpy(&out[0], &ms_be, sizeof(ms_be));
-            std::memcpy(&out[8], &seq_be, sizeof(seq_be));
+            // Convert ms to big-endian (MSB first)
+            out[0] = (ms >> 56) & 0xFF;
+            out[1] = (ms >> 48) & 0xFF;
+            out[2] = (ms >> 40) & 0xFF;
+            out[3] = (ms >> 32) & 0xFF;
+            out[4] = (ms >> 24) & 0xFF;
+            out[5] = (ms >> 16) & 0xFF;
+            out[6] = (ms >> 8) & 0xFF;
+            out[7] = ms & 0xFF;
+            // Convert seq to big-endian (MSB first)
+            out[8] = (seq >> 56) & 0xFF;
+            out[9] = (seq >> 48) & 0xFF;
+            out[10] = (seq >> 40) & 0xFF;
+            out[11] = (seq >> 32) & 0xFF;
+            out[12] = (seq >> 24) & 0xFF;
+            out[13] = (seq >> 16) & 0xFF;
+            out[14] = (seq >> 8) & 0xFF;
+            out[15] = seq & 0xFF;
             return out;
         }
         static inline StreamID fromBinary(const std::string &string)
         {
             assert(string.size() >= 16);
-            uint64_t ms_be;
-            uint64_t seq_be;
-            std::memcpy(&ms_be, &string[0], 8);
-            std::memcpy(&seq_be, &string[8], 8);
             StreamID s;
-            s.ms = toBigEndian64(ms_be);
-            s.seq = toBigEndian64(seq_be);
+            // Decode ms from big-endian (MSB first)
+            s.ms = ((uint64_t)(unsigned char)string[0] << 56) |
+                   ((uint64_t)(unsigned char)string[1] << 48) |
+                   ((uint64_t)(unsigned char)string[2] << 40) |
+                   ((uint64_t)(unsigned char)string[3] << 32) |
+                   ((uint64_t)(unsigned char)string[4] << 24) |
+                   ((uint64_t)(unsigned char)string[5] << 16) |
+                   ((uint64_t)(unsigned char)string[6] << 8) |
+                   ((uint64_t)(unsigned char)string[7]);
+            // Decode seq from big-endian (MSB first)
+            s.seq = ((uint64_t)(unsigned char)string[8] << 56) |
+                    ((uint64_t)(unsigned char)string[9] << 48) |
+                    ((uint64_t)(unsigned char)string[10] << 40) |
+                    ((uint64_t)(unsigned char)string[11] << 32) |
+                    ((uint64_t)(unsigned char)string[12] << 24) |
+                    ((uint64_t)(unsigned char)string[13] << 16) |
+                    ((uint64_t)(unsigned char)string[14] << 8) |
+                    ((uint64_t)(unsigned char)string[15]);
             return s;
         }
         inline bool isGreater(const StreamID &other) const
