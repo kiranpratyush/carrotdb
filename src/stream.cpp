@@ -110,7 +110,7 @@ namespace REDIS_NAMESPACE
         return true;
     }
 
-    bool Stream::xrangeData(std::string startStreamIdInString, std::string endStreamIdInString, std::vector<std::pair<std::string, std::string>> &result)
+    bool Stream::xrangeData(std::string startStreamIdInString, std::string endStreamIdInString, std::vector<std::pair<std::string, std::string>> &result, bool isExclusive = false)
     {
         StreamID startStreamID;
         StreamID endStreamID;
@@ -122,7 +122,7 @@ namespace REDIS_NAMESPACE
         auto updatedEndStreamIdInBinary = endStreamID.toBinary();
         if (!radixTreePtr)
             return false;
-        radixTreePtr->rangeSearch(updatedStartStreamIdInBinary, updatedEndStreamIdInBinary, result);
+        radixTreePtr->rangeSearch(updatedStartStreamIdInBinary, updatedEndStreamIdInBinary, result, isExclusive);
         return true;
     }
 

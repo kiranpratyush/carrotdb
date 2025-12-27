@@ -51,6 +51,8 @@ namespace REDIS_NAMESPACE
             handle_xadd(c, total_commands - 1);
         else if (is_equal(slice, "XRANGE"))
             handle_xrange(c, total_commands - 1);
+        else if (is_equal(slice, "XREAD"))
+            handle_xread(c, total_commands - 1);
         else
             handle_ping(c);
     }

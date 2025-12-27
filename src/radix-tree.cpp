@@ -50,11 +50,11 @@ void RadixTree::insert(std::string key, std::string_view value)
     insertImpl(this->root.get(), key, value);
 }
 
-void RadixTree::rangeSearch(std::string startKey, std::string endKey, std::vector<std::pair<std::string, std::string>> &result)
+void RadixTree::rangeSearch(std::string startKey, std::string endKey, std::vector<std::pair<std::string, std::string>> &result, bool isExclusive = false)
 {
     if (!root)
         return;
-    rangeSearchImpl(startKey, endKey, result, root.get(), "");
+    rangeSearchImpl(startKey, endKey, result, root.get(), "", isExclusive);
 }
 
 void RadixTree::insertImpl(RadixTreeNode *node, std::string key, std::string_view value)
@@ -127,7 +127,7 @@ void RadixTree::insertImpl(RadixTreeNode *node, std::string key, std::string_vie
     node->children.emplace(std::string(key.substr(0, bestMatchedLength)), std::move(split));
 }
 
-void RadixTree::rangeSearchImpl(std::string startKey, std::string endKey, std::vector<std::pair<std::string, std::string>> &result, RadixTreeNode *root, std::string currentKey)
+void RadixTree::rangeSearchImpl(std::string startKey, std::string endKey, std::vector<std::pair<std::string, std::string>> &result, RadixTreeNode *root, std::string currentKey, bool isExclusive = false)
 { /*
   1. Base case : if some data is present in this node and they are inside the range then add this to result
   */
@@ -135,7 +135,8 @@ void RadixTree::rangeSearchImpl(std::string startKey, std::string endKey, std::v
     {
         if (currentKey >= startKey && currentKey <= endKey)
         {
-            result.push_back(std::pair{currentKey, root->data});
+            if (!(isExclusive && currentKey == startKey))
+                result.push_back(std::pair{currentKey, root->data});
         }
     }
     for (auto &[key, child] : root->children)

@@ -1,19 +1,15 @@
 #include "db/db.h"
 
-#include <cctype>
-
 namespace REDIS_NAMESPACE
 {
-
-    void DB::handle_xrange(ClientContext &c, int total_commands)
+    void DB::handle_xread(ClientContext &c, int total_commands)
     {
+        Parser::Parse(c); // TODO: for now ignore STREAMS
         std::string_view readBuffer = c.client->read_buffer;
         ParsedToken keyToken = Parser::Parse(c);
         std::string key{readBuffer.data() + keyToken.start_pos, keyToken.end_pos - keyToken.start_pos + 1};
         ParsedToken startStreamToken = Parser::Parse(c);
         std::string startStream{readBuffer.data() + startStreamToken.start_pos, startStreamToken.end_pos - startStreamToken.start_pos + 1};
-        ParsedToken endStreamToken = Parser::Parse(c);
-        std::string endStream{readBuffer.data() + endStreamToken.start_pos, endStreamToken.end_pos - endStreamToken.start_pos + 1};
 
         auto it = store.find(key);
         if (it == store.end())
@@ -22,7 +18,6 @@ namespace REDIS_NAMESPACE
             c.current_write_position = 0;
             return;
         }
-
         RedisObject &redisObj = it->second;
         if (redisObj.type != RedisObjectEncodingType::STREAM || !redisObj.streamPtr)
         {
@@ -30,9 +25,8 @@ namespace REDIS_NAMESPACE
             c.current_write_position = 0;
             return;
         }
-
         std::vector<std::pair<std::string, std::string>> entries{}; // (binary_id, raw field/value bulk-string sequence)
-        const bool ok = redisObj.streamPtr->xrangeData(startStream, endStream, entries, false);
+        const bool ok = redisObj.streamPtr->xrangeData(startStream, "+", entries, true);
         if (!ok || entries.empty())
         {
             c.client->write_buffer.append("*0\r\n");

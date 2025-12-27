@@ -56,4 +56,51 @@ namespace REDIS_NAMESPACE
         c.current_read_position += 2;
         return true;
     }
+
+    bool Parser::parse_bulk_string_sequence(const std::string &raw, std::vector<std::string> &out)
+    {
+
+        size_t pos = 0;
+        while (pos < raw.size())
+        {
+            // Skip any stray CRLF (defensive)
+            while (pos < raw.size() && (raw[pos] == '\r' || raw[pos] == '\n'))
+            {
+                pos++;
+            }
+            if (pos >= raw.size())
+                break;
+
+            if (raw[pos] != '$')
+                return false;
+            pos++;
+
+            if (pos >= raw.size() || !std::isdigit(static_cast<unsigned char>(raw[pos])))
+                return false;
+
+            size_t len = 0;
+            while (pos < raw.size() && raw[pos] != '\r')
+            {
+                if (!std::isdigit(static_cast<unsigned char>(raw[pos])))
+                    return false;
+                len = (len * 10) + static_cast<size_t>(raw[pos] - '0');
+                pos++;
+            }
+
+            if (pos + 1 >= raw.size() || raw[pos] != '\r' || raw[pos + 1] != '\n')
+                return false;
+            pos += 2;
+
+            if (pos + len > raw.size())
+                return false;
+            out.emplace_back(raw.substr(pos, len));
+            pos += len;
+
+            if (pos + 1 >= raw.size() || raw[pos] != '\r' || raw[pos + 1] != '\n')
+                return false;
+            pos += 2;
+        }
+        return true;
+    }
+
 }
