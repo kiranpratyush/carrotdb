@@ -149,6 +149,6 @@ void RadixTree::rangeSearchImpl(std::string startKey, std::string endKey, std::v
         if (newKey <= startKey && !isPrefixStillExists)
             continue; // newKey is still less than startKey but is not prefix so continue
 
-        rangeSearchImpl(startKey, endKey, result, child.get(), newKey);
+        rangeSearchImpl(startKey, endKey, result, child.get(), newKey, isExclusive);
     }
 }

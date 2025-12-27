@@ -33,7 +33,9 @@ namespace REDIS_NAMESPACE
             c.current_write_position = 0;
             return;
         }
-
+        c.client->write_buffer.append("*2\r\n");
+        c.client->write_buffer.append("$" + std::to_string(key.size()) + "\r\n");
+        c.client->write_buffer.append(key + "\r\n");
         c.client->write_buffer.append("*" + std::to_string(entries.size()) + "\r\n");
         for (const auto &[binaryId, rawPayload] : entries)
         {
