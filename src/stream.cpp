@@ -4,17 +4,14 @@ namespace REDIS_NAMESPACE
 {
     StreamStatus Stream::insert(std::string_view streamId, std::string_view value)
     {
-        // Step 1: Convert string to StreamID
         StreamID sid;
         if (!fromString(streamId, sid))
         {
-            // Invalid stream ID format
             return StreamStatus{StreamErrorType::INVALID_ID_FORMAT, ""};
         }
         if (sid.ms == 0 && sid.seq == 0)
             return StreamStatus{StreamErrorType::NOT_GREATER_THAN_ZERO, ""};
 
-        // Step 2: Check if the new ID is greater than the last inserted ID
         if (lastInsertStreamID.ms != 0 || lastInsertStreamID.seq != 0)
         {
             if (!sid.isGreater(lastInsertStreamID))
@@ -23,17 +20,14 @@ namespace REDIS_NAMESPACE
             }
         }
 
-        // Step 3: Convert StreamID to binary format
         std::string binaryKey = sid.toBinary();
 
-        // Step 4: Store in radix tree
         if (!radixTreePtr)
         {
             radixTreePtr = std::make_unique<RadixTree>();
         }
         radixTreePtr->insert(binaryKey, value);
 
-        // Update last inserted stream ID
         lastInsertStreamID = sid;
 
         return StreamStatus{StreamErrorType::OK, sid.toString()};
@@ -80,4 +74,56 @@ namespace REDIS_NAMESPACE
         out.seq = seq_val;
         return true;
     }
+    bool Stream::fromStringForSearch(std::string &str, bool isEndKey, StreamID &out)
+    {
+        if (str == "-")
+        {
+            out.ms = 0;
+            out.seq = 0;
+            return true;
+        }
+        if (str == "+")
+        {
+            out.ms = std::numeric_limits<uint64_t>::max();
+            out.seq = std::numeric_limits<uint64_t>::max();
+            return true;
+        }
+
+        size_t dashPos = str.find("-");
+        if (dashPos == std::string_view::npos)
+        {
+            if (!isEndKey)
+                str = str + "-0";
+            else
+                str = str + "-" + std::to_string(std::numeric_limits<uint64_t>::max());
+            dashPos = str.find("-");
+        }
+        std::string msStr = str.substr(0, dashPos);
+        std::string seqStr = str.substr(dashPos + 1);
+        unsigned long long msVal, seqVal;
+        if (!convert_positive_string_to_number(msStr, msVal))
+            return false;
+        if (!convert_positive_string_to_number(seqStr, seqVal))
+            return false;
+        out.ms = msVal;
+        out.seq = seqVal;
+        return true;
+    }
+
+    bool Stream::xrangeData(std::string startStreamIdInString, std::string endStreamIdInString, std::vector<std::pair<std::string, std::string>> &result)
+    {
+        StreamID startStreamID;
+        StreamID endStreamID;
+        if (!fromStringForSearch(startStreamIdInString, false, startStreamID))
+            return false;
+        if (!fromStringForSearch(endStreamIdInString, true, endStreamID))
+            return false;
+        auto updatedStartStreamIdInBinary = startStreamID.toBinary();
+        auto updatedEndStreamIdInBinary = endStreamID.toBinary();
+        if (!radixTreePtr)
+            return false;
+        radixTreePtr->rangeSearch(updatedStartStreamIdInBinary, updatedEndStreamIdInBinary, result);
+        return true;
+    }
+
 }

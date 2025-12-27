@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <limits>
 #include <memory>
 #include <cassert>
 #include <cstring>
@@ -95,7 +96,9 @@ namespace REDIS_NAMESPACE
 
     public:
         StreamStatus insert(std::string_view streamId, std::string_view value);
+        bool xrangeData(std::string startStreamId, std::string endStreamId, std::vector<std::pair<std::string, std::string>> &result);
         inline StreamID getLastInsertedID() const { return lastInsertStreamID; }
         bool fromString(std::string_view str, StreamID &out);
+        bool fromStringForSearch(std::string &str, bool isEndKey, StreamID &out);
     };
 }

@@ -36,7 +36,7 @@ namespace REDIS_NAMESPACE
         void handle_lpop(ClientContext &context, int total_comands);
         void handle_blpop(ClientContext &context, int total_comands);
         void handle_xadd(ClientContext &context, int total_commands);
-        void handle_xadd_response(std::shared_ptr<Client> &client, const std::string &key, const std::string &value);
+        void handle_xrange(ClientContext &context, int total_commands);
         void signal_key_ready(const std::string &key, ClientContext &context);
         void write_blpop_response(std::shared_ptr<Client> &client, const std::string &key, const std::string &value);
         bool handle_blocked_key_push(ClientContext &c, int &total_commands, const std::string &key);

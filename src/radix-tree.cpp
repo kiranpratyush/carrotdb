@@ -50,6 +50,13 @@ void RadixTree::insert(std::string key, std::string_view value)
     insertImpl(this->root.get(), key, value);
 }
 
+void RadixTree::rangeSearch(std::string startKey, std::string endKey, std::vector<std::pair<std::string, std::string>> &result)
+{
+    if (!root)
+        return;
+    rangeSearchImpl(startKey, endKey, result, root.get(), "");
+}
+
 void RadixTree::insertImpl(RadixTreeNode *node, std::string key, std::string_view value)
 {
     if (key.empty())
@@ -118,4 +125,29 @@ void RadixTree::insertImpl(RadixTreeNode *node, std::string key, std::string_vie
     }
 
     node->children.emplace(std::string(key.substr(0, bestMatchedLength)), std::move(split));
+}
+
+void RadixTree::rangeSearchImpl(std::string startKey, std::string endKey, std::vector<std::pair<std::string, std::string>> &result, RadixTreeNode *root, std::string currentKey)
+{ /*
+  1. Base case : if some data is present in this node and they are inside the range then add this to result
+  */
+    if (root->isDataPresent)
+    {
+        if (currentKey >= startKey && currentKey <= endKey)
+        {
+            result.push_back(std::pair{currentKey, root->data});
+        }
+    }
+    for (auto &[key, child] : root->children)
+    {
+        const std::string newKey = currentKey + key;
+        // If newKey exceeds endKey we won't find any other
+        if (newKey > endKey)
+            return;
+        const bool isPrefixStillExists = (startKey.size() >= newKey.size()) && startKey.compare(0, newKey.size(), newKey) == 0;
+        if (newKey <= startKey && !isPrefixStillExists)
+            continue; // newKey is still less than startKey but is not prefix so continue
+
+        rangeSearchImpl(startKey, endKey, result, child.get(), newKey);
+    }
 }
