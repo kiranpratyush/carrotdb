@@ -11,7 +11,7 @@ namespace REDIS_NAMESPACE
     static void mark_client_blocking(ClientContext &c, std::string_view key, std::string_view stream_id, double expirationTime, std::unordered_map<std::string, std::queue<BlockedXreadClient>> &blocked_keys)
     {
         c.isBlocked = true;
-        auto client = BlockedXreadClient{c.client, c.client_fd, expirationTime / 1000.0};
+        auto client = BlockedXreadClient{c.client, c.client_fd, expirationTime};
         client.stream_id = stream_id;
         client.stream_key = key;
         blocked_keys[std::string(key)].push(std::move(client));

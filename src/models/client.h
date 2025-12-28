@@ -71,9 +71,9 @@ namespace SERVER_NAMESPACE
         std::string stream_id;
         std::string stream_key;
         double timeout_seconds;
-        BlockedXreadClient(std::weak_ptr<Client> c, int fd, double timeout_secs) : client(c), client_fd(fd), timeout_seconds(timeout_secs)
+        BlockedXreadClient(std::weak_ptr<Client> c, int fd, double timeout_ms) : client(c), client_fd(fd), timeout_seconds(timeout_ms / 1000)
         {
-            if (timeout_secs == 0.0)
+            if (timeout_ms == 0)
             {
                 // 0 means block indefinitely - set to max time point
                 timeout_at = std::chrono::steady_clock::time_point::max();
@@ -81,8 +81,8 @@ namespace SERVER_NAMESPACE
             else
             {
                 // Convert seconds (with fractional part) to milliseconds
-                auto timeout_ms = std::chrono::milliseconds(static_cast<long long>(timeout_secs * 1000));
-                timeout_at = std::chrono::steady_clock::now() + timeout_ms;
+                auto timeoutMs = std::chrono::milliseconds(static_cast<long long>(timeout_ms));
+                timeout_at = std::chrono::steady_clock::now() + timeoutMs;
             }
         }
         bool is_expired() const
