@@ -38,8 +38,11 @@ namespace REDIS_NAMESPACE
             return;
         }
 
+        // If start_id is "$", it means stream didn't exist when blocked, so start from beginning
+        std::string actualStartId = (start_id == "$") ? "0-0" : start_id;
+
         std::vector<std::pair<std::string, std::string>> entries{};
-        const bool ok = redisObj.streamPtr->xrangeData(start_id, "+", entries, true);
+        const bool ok = redisObj.streamPtr->xrangeData(actualStartId, "+", entries, true);
         if (!ok || entries.empty())
         {
             client->write_buffer.append("*-1\r\n");
@@ -164,6 +167,20 @@ namespace REDIS_NAMESPACE
 
         for (int i = 0; i < numStreams; i++)
         {
+            // If blocking with "$", always block regardless of stream state
+            if (isBlocking && startIds[i] == "$")
+            {
+                // Get the last ID from the stream if it exists
+                std::string blockOnId = startIds[i];
+                auto it = store.find(keys[i]);
+                if (it != store.end() && it->second.type == RedisObjectEncodingType::STREAM && it->second.streamPtr)
+                {
+                    blockOnId = it->second.streamPtr->getLastInsertedID().toString();
+                }
+                mark_client_blocking(c, keys[i], blockOnId, expirationTime, blocked_xread_keys);
+                return;
+            }
+
             auto it = store.find(keys[i]);
             if (it == store.end())
             {
