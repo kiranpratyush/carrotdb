@@ -72,7 +72,7 @@ namespace REDIS_NAMESPACE
     }
     int DB::get_next_timeout_ms()
     {
-        if (blocked_keys.empty())
+        if (blocked_keys.empty() && blocked_xread_keys.empty())
         {
             return -1;
         }
@@ -80,11 +80,25 @@ namespace REDIS_NAMESPACE
         auto now = std::chrono::steady_clock::now();
         auto min_timeout = std::chrono::steady_clock::time_point::max();
 
+        // Check BLPOP blocked clients
         for (const auto &[key, client_queue] : blocked_keys)
         {
             if (!client_queue.empty())
             {
                 const BlockedClient &front_client = client_queue.front();
+                if (front_client.timeout_at < min_timeout)
+                {
+                    min_timeout = front_client.timeout_at;
+                }
+            }
+        }
+
+        // Check XREAD blocked clients
+        for (const auto &[key, client_queue] : blocked_xread_keys)
+        {
+            if (!client_queue.empty())
+            {
+                const BlockedXreadClient &front_client = client_queue.front();
                 if (front_client.timeout_at < min_timeout)
                 {
                     min_timeout = front_client.timeout_at;

@@ -102,6 +102,7 @@ namespace REDIS_NAMESPACE
         std::vector<int> expired_fds;
         std::vector<std::string> keys_to_remove;
 
+        // Handle BLPOP blocked clients
         for (auto &[key, client_queue] : blocked_keys)
         {
             std::queue<BlockedClient> new_queue;
@@ -140,6 +141,48 @@ namespace REDIS_NAMESPACE
         for (const auto &key : keys_to_remove)
         {
             blocked_keys.erase(key);
+        }
+
+        // Handle XREAD blocked clients
+        keys_to_remove.clear();
+        for (auto &[key, client_queue] : blocked_xread_keys)
+        {
+            std::queue<BlockedXreadClient> new_queue;
+
+            while (!client_queue.empty())
+            {
+                BlockedXreadClient blocked_client = client_queue.front();
+                client_queue.pop();
+
+                if (blocked_client.is_expired())
+                {
+                    // Client timed out - send null response
+                    auto client_ptr = blocked_client.client.lock();
+                    if (client_ptr)
+                    {
+                        client_ptr->write_buffer.append("*-1\r\n"); // Null array for timeout
+                        expired_fds.push_back(blocked_client.client_fd);
+                    }
+                }
+                else
+                {
+                    // Still valid, keep in queue
+                    new_queue.push(blocked_client);
+                }
+            }
+
+            if (new_queue.empty())
+            {
+                keys_to_remove.push_back(key);
+            }
+            else
+            {
+                client_queue = std::move(new_queue);
+            }
+        }
+        for (const auto &key : keys_to_remove)
+        {
+            blocked_xread_keys.erase(key);
         }
 
         return expired_fds;

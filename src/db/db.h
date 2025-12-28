@@ -26,6 +26,7 @@ namespace REDIS_NAMESPACE
         std::unordered_map<std::string, RedisObject> store{};
         std::unordered_map<std::string, std::chrono::steady_clock::time_point> expiration{};
         std::unordered_map<std::string, std::queue<BlockedClient>> blocked_keys{};
+        std::unordered_map<std::string, std::queue<BlockedXreadClient>> blocked_xread_keys{};
         void handle_ping(ClientContext &context);
         void handle_echo(ClientContext &context);
         void handle_set(ClientContext &context, int total_commands);
@@ -41,6 +42,8 @@ namespace REDIS_NAMESPACE
         void signal_key_ready(const std::string &key, ClientContext &context);
         void write_blpop_response(std::shared_ptr<Client> &client, const std::string &key, const std::string &value);
         bool handle_blocked_key_push(ClientContext &c, int &total_commands, const std::string &key);
+        void handle_blocked_xread_clients(const std::string &key, ClientContext &context);
+        void write_xread_response(std::shared_ptr<Client> &client, const std::string &key, const std::string &start_id);
         uint32_t create_new_list(const std::string &key, unsigned char *value_ptr, uint32_t value_len, bool is_prepend);
         uint32_t append_to_existing_list(RedisObject &redisObject, unsigned char *value_ptr, uint32_t value_len, bool is_prepend);
         uint32_t push_value_to_list(const std::string &key, unsigned char *value_ptr, uint32_t value_len, bool is_prepend);
