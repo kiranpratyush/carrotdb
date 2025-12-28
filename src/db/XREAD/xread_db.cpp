@@ -114,7 +114,7 @@ namespace REDIS_NAMESPACE
         double expirationTime = 0.0;
 
         std::string type{readBuffer.data() + typeToken.start_pos, typeToken.end_pos - typeToken.start_pos + 1};
-        if (type == "BLOCK")
+        if (type == "BLOCK" || type == "block")
         {
             isBlocking = true;
             ParsedToken expirationTimeToken = Parser::Parse(c);
