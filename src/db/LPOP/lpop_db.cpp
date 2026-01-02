@@ -1,38 +1,24 @@
 #include "db/db.h"
+#include "utils/utils.h"
 
 namespace REDIS_NAMESPACE
 {
-    void DB::handle_lpop(ClientContext &c, int total_commands)
+    void DB::handle_lpop(ClientContext &c, const LpopCommand &cmd)
     {
-        ParsedToken key_token = Parser::Parse(c);
-        std::string key{c.client->read_buffer.data() + key_token.start_pos, key_token.end_pos - key_token.start_pos + 1};
+        const std::string &key = cmd.key;
         std::vector<std::string> result{};
-        uint32_t total_count = 1;
-        total_commands--;
-        if (total_commands > 0)
-        {
-            ParsedToken count_token = Parser::Parse(c);
-            std::string count_token_string{c.client->read_buffer.data() + count_token.start_pos, count_token.end_pos - count_token.start_pos + 1};
-            try
-            {
-                total_count = std::stoll(count_token_string);
-            }
-            catch (...)
-            {
-                total_count = 1;
-            }
-        }
+        uint32_t total_count = cmd.count.value_or(1);
         auto it = store.find(key);
         if (it == store.end())
         {
-            c.client->write_buffer.append("$-1\r\n");
+            encode_null_bulk_string(&c.client->write_buffer);
             c.current_write_position = 0;
             return;
         }
         RedisObject &redisObj = it->second;
         if (redisObj.type != RedisObjectEncodingType::LIST_PACK || !redisObj.listPack)
         {
-            c.client->write_buffer.append("$-1\r\n");
+            encode_null_bulk_string(&c.client->write_buffer);
             c.current_write_position = 0;
             return;
         }

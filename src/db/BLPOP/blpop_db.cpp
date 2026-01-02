@@ -1,31 +1,15 @@
 #include "db/db.h"
+#include "utils/utils.h"
 
 namespace REDIS_NAMESPACE
 {
-    void DB::handle_blpop(ClientContext &context, int total_commands)
+    void DB::handle_blpop(ClientContext &context, const BlpopCommand &cmd)
     {
         auto client = context.client;
-        auto *read_buffer = client->read_buffer.data();
-        double expiration_time = 0.0;
+        double expiration_time = cmd.timeout;
 
-        ParsedToken key_token = Parser::Parse(context);
-        std::string key{read_buffer + key_token.start_pos, key_token.end_pos - key_token.start_pos + 1};
-        total_commands--;
-
-        if (total_commands > 0)
-        {
-            ParsedToken expire_timeout_token = Parser::Parse(context);
-            std::string expire_time_out_string{read_buffer + expire_timeout_token.start_pos,
-                                               expire_timeout_token.end_pos - expire_timeout_token.start_pos + 1};
-            try
-            {
-                expiration_time = std::stod(expire_time_out_string);
-            }
-            catch (...)
-            {
-                expiration_time = 0.0;
-            }
-        }
+        // For now, handle only the first key (Redis BLPOP can handle multiple keys)
+        const std::string &key = cmd.keys.empty() ? "" : cmd.keys[0];
 
         auto it = store.find(key);
         if (it == store.end())
@@ -38,7 +22,7 @@ namespace REDIS_NAMESPACE
         RedisObject &redisObject = it->second;
         if (redisObject.type != RedisObjectEncodingType::LIST_PACK || !redisObject.listPack)
         {
-            client->write_buffer.append("$-1\r\n");
+            encode_null_bulk_string(&client->write_buffer);
             context.current_write_position = 0;
             return;
         }

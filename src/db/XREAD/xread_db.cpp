@@ -110,53 +110,21 @@ namespace REDIS_NAMESPACE
         }
     }
 
-    void DB::handle_xread(ClientContext &c, int total_commands)
+    void DB::handle_xread(ClientContext &c, const XreadCommand &cmd)
     {
-        bool isBlocking = false;
-        std::string_view readBuffer = c.client->read_buffer;
-        ParsedToken typeToken = Parser::Parse(c);
-        double expirationTime = 0.0;
+        bool isBlocking = cmd.block_timeout.has_value();
+        double expirationTime = cmd.block_timeout.value_or(0.0);
 
-        std::string type{readBuffer.data() + typeToken.start_pos, typeToken.end_pos - typeToken.start_pos + 1};
-        if (type == "BLOCK" || type == "block")
-        {
-            isBlocking = true;
-            ParsedToken expirationTimeToken = Parser::Parse(c);
-            std::string expirationTimeInString{readBuffer.data() + expirationTimeToken.start_pos, expirationTimeToken.end_pos - expirationTimeToken.start_pos + 1};
-            try
-            {
-                expirationTime = std::stod(expirationTimeInString);
-            }
-            catch (...)
-            {
-                expirationTime = 0.0;
-            }
-            total_commands -= 2;
-            Parser::Parse(c); // ignore for streams
-        }
-        const int remaining = total_commands - 1;
-        if (remaining <= 0 || (remaining % 2) != 0)
+        const std::vector<std::string> &keys = cmd.keys;
+        const std::vector<std::string> &startIds = cmd.ids;
+
+        if (keys.size() != startIds.size())
         {
             writeEmptyArray(c);
             return;
         }
 
-        const int numStreams = remaining / 2;
-        std::vector<std::string> keys{};
-        std::vector<std::string> startIds{};
-        keys.reserve(numStreams);
-        startIds.reserve(numStreams);
-
-        for (int i = 0; i < numStreams; i++)
-        {
-            ParsedToken keyToken = Parser::Parse(c);
-            keys.emplace_back(readBuffer.data() + keyToken.start_pos, keyToken.end_pos - keyToken.start_pos + 1);
-        }
-        for (int i = 0; i < numStreams; i++)
-        {
-            ParsedToken startStreamToken = Parser::Parse(c);
-            startIds.emplace_back(readBuffer.data() + startStreamToken.start_pos, startStreamToken.end_pos - startStreamToken.start_pos + 1);
-        }
+        const int numStreams = keys.size();
 
         struct StreamReply
         {

@@ -1,38 +1,19 @@
 #include "db/db.h"
+#include "utils/utils.h"
 
 namespace REDIS_NAMESPACE
 {
-    void DB::handle_lrange(ClientContext &c)
+    void DB::handle_lrange(ClientContext &c, const LrangeCommand &cmd)
     {
-        ParsedToken key_token = Parser::Parse(c);
-        ParsedToken start_index_token = Parser::Parse(c);
-        ParsedToken end_index_token = Parser::Parse(c);
-        std::string key{c.client->read_buffer.data() + key_token.start_pos, key_token.end_pos - key_token.start_pos + 1};
-        std::string start_index_string{c.client->read_buffer.data() + start_index_token.start_pos, start_index_token.end_pos - start_index_token.start_pos + 1};
-        std::string end_index_string{c.client->read_buffer.data() + end_index_token.start_pos, end_index_token.end_pos - end_index_token.start_pos + 1};
-
-        // Parse as signed integers to support negative indices
-        long long start_index;
-        long long end_index;
+        const std::string &key = cmd.key;
+        long long start_index = cmd.start;
+        long long end_index = cmd.stop;
         std::vector<std::string> result{};
-
-        // Try to parse as signed integers (supports negative values like -1)
-        try
-        {
-            start_index = std::stoll(start_index_string);
-            end_index = std::stoll(end_index_string);
-        }
-        catch (...)
-        {
-            c.client->write_buffer.append("*0\r\n");
-            c.current_write_position = 0;
-            return;
-        }
 
         auto it = store.find(key);
         if (it == store.end())
         {
-            c.client->write_buffer.append("*0\r\n");
+            encode_empty_array(&c.client->write_buffer);
             c.current_write_position = 0;
             return;
         }
@@ -41,7 +22,7 @@ namespace REDIS_NAMESPACE
         const RedisObject &redisObj = it->second;
         if (redisObj.type != RedisObjectEncodingType::LIST_PACK || !redisObj.listPack)
         {
-            c.client->write_buffer.append("*0\r\n");
+            encode_empty_array(&c.client->write_buffer);
             c.current_write_position = 0;
             return;
         }

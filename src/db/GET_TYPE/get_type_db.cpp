@@ -1,13 +1,11 @@
 #include "db/db.h"
+#include "utils/utils.h"
 
 namespace REDIS_NAMESPACE
 {
-    void DB::handle_get_or_type(ClientContext &c, bool isTypeCommand = false)
+    void DB::handle_get_or_type(ClientContext &c, const GetCommand &cmd, bool isTypeCommand)
     {
-        ParsedToken key_token = Parser::Parse(c);
-        if (key_token.type == ParsedToken::Type::BULK_STRING)
-        {
-            std::string key{c.client->read_buffer.data() + key_token.start_pos, key_token.end_pos - key_token.start_pos + 1};
+        const std::string &key = cmd.key;
             auto it = store.find(key);
             // find if the key has expired
             auto exp_it = expiration.find(key);
@@ -29,29 +27,77 @@ namespace REDIS_NAMESPACE
                 {
                     if (isTypeCommand)
                     {
-                        c.client->write_buffer.append("+string\r\n");
+                        encode_simple_string(&c.client->write_buffer, "string");
                     }
                     else
                     {
-                        c.client->write_buffer.append("$" + std::to_string(redisObject.stringPtr->length()) + "\r\n" + *redisObject.stringPtr + "\r\n");
+                        encode_bulk_string(&c.client->write_buffer, *redisObject.stringPtr);
                     }
                 }
                 else if (redisObject.type == RedisObjectEncodingType::STREAM)
                 {
                     if (isTypeCommand)
                     {
-                        c.client->write_buffer.append("+stream\r\n");
+                        encode_simple_string(&c.client->write_buffer, "stream");
                     }
                 }
             }
             else
             {
                 if (isTypeCommand)
-                    c.client->write_buffer.append("+none\r\n");
+                    encode_simple_string(&c.client->write_buffer, "none");
                 else
-                    c.client->write_buffer.append("$-1\r\n");
+                    encode_null_bulk_string(&c.client->write_buffer);
             }
             c.current_write_position = 0;
+    }
+
+    void DB::handle_get_or_type(ClientContext &c, const TypeCommand &cmd, bool isTypeCommand)
+    {
+        const std::string &key = cmd.key;
+        auto it = store.find(key);
+        // find if the key has expired
+        auto exp_it = expiration.find(key);
+        if (exp_it != expiration.end())
+        {
+            auto steady_now = std::chrono::steady_clock::now();
+            if (steady_now >= exp_it->second)
+            {
+                // key has expired
+                store.erase(it);
+                expiration.erase(exp_it);
+                it = store.end();
+            }
         }
+        if (it != store.end())
+        {
+            const RedisObject &redisObject = it->second;
+            if (redisObject.type == RedisObjectEncodingType::STRING)
+            {
+                if (isTypeCommand)
+                {
+                    encode_simple_string(&c.client->write_buffer, "string");
+                }
+                else
+                {
+                    encode_bulk_string(&c.client->write_buffer, *redisObject.stringPtr);
+                }
+            }
+            else if (redisObject.type == RedisObjectEncodingType::STREAM)
+            {
+                if (isTypeCommand)
+                {
+                    encode_simple_string(&c.client->write_buffer, "stream");
+                }
+            }
+        }
+        else
+        {
+            if (isTypeCommand)
+                encode_simple_string(&c.client->write_buffer, "none");
+            else
+                encode_null_bulk_string(&c.client->write_buffer);
+        }
+        c.current_write_position = 0;
     }
 }

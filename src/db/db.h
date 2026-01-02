@@ -3,6 +3,7 @@
 #include "utils/utils.h"
 #include "listpack.h"
 #include "parser/parser.h"
+#include "parser/command.h"
 #include "models/client.h"
 #include "models/redisObject.h"
 #include <string>
@@ -28,18 +29,20 @@ namespace REDIS_NAMESPACE
         std::unordered_map<std::string, std::queue<BlockedClient>> blocked_keys{};
         std::unordered_map<std::string, std::queue<BlockedXreadClient>> blocked_xread_keys{};
         void handle_ping(ClientContext &context);
-        void handle_echo(ClientContext &context);
-        void handle_set(ClientContext &context, int total_commands);
-        void handle_get_or_type(ClientContext &context, bool isType);
-        void handle_push(ClientContext &context, int total_commands, bool is_prepend);
-        void handle_lrange(ClientContext &context);
-        void handle_llen(ClientContext &context);
-        void handle_lpop(ClientContext &context, int total_comands);
-        void handle_blpop(ClientContext &context, int total_comands);
-        void handle_xadd(ClientContext &context, int total_commands);
-        void handle_xrange(ClientContext &context, int total_commands);
-        void handle_xread(ClientContext &context, int total_commands);
-        void handle_incr(ClientContext &context, int total_commands);
+        void handle_echo(ClientContext &context, const EchoCommand &cmd);
+        void handle_set(ClientContext &context, const SetCommand &cmd);
+        void handle_get_or_type(ClientContext &context, const GetCommand &cmd, bool isType);
+        void handle_get_or_type(ClientContext &context, const TypeCommand &cmd, bool isType);
+        void handle_push(ClientContext &context, const RpushCommand &cmd, bool is_prepend);
+        void handle_push(ClientContext &context, const LpushCommand &cmd, bool is_prepend);
+        void handle_lrange(ClientContext &context, const LrangeCommand &cmd);
+        void handle_llen(ClientContext &context, const LlenCommand &cmd);
+        void handle_lpop(ClientContext &context, const LpopCommand &cmd);
+        void handle_blpop(ClientContext &context, const BlpopCommand &cmd);
+        void handle_xadd(ClientContext &context, const XaddCommand &cmd);
+        void handle_xrange(ClientContext &context, const XrangeCommand &cmd);
+        void handle_xread(ClientContext &context, const XreadCommand &cmd);
+        void handle_incr(ClientContext &context, const IncrCommand &cmd);
         void signal_key_ready(const std::string &key, ClientContext &context);
         void write_blpop_response(std::shared_ptr<Client> &client, const std::string &key, const std::string &value);
         bool handle_blocked_key_push(ClientContext &c, int &total_commands, const std::string &key);

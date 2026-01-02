@@ -104,4 +104,77 @@ namespace REDIS_NAMESPACE
         return millis.count();
     }
 
+    // ==================== RESP Encoding Helpers ====================
+    // All functions take a string pointer and append directly to avoid copying
+
+    // Encode a RESP Simple String (+OK\r\n)
+    inline void encode_simple_string(std::string *buffer, std::string_view str)
+    {
+        buffer->append("+");
+        buffer->append(str);
+        buffer->append("\r\n");
+    }
+
+    // Encode a RESP Bulk String ($<length>\r\n<data>\r\n)
+    inline void encode_bulk_string(std::string *buffer, std::string_view str)
+    {
+        buffer->append("$");
+        buffer->append(std::to_string(str.length()));
+        buffer->append("\r\n");
+        buffer->append(str);
+        buffer->append("\r\n");
+    }
+
+    // Encode a RESP Null Bulk String ($-1\r\n)
+    inline void encode_null_bulk_string(std::string *buffer)
+    {
+        buffer->append("$-1\r\n");
+    }
+
+    // Encode a RESP Empty Array (*0\r\n)
+    inline void encode_empty_array(std::string *buffer)
+    {
+        buffer->append("*0\r\n");
+    }
+
+    // Encode a RESP Null Array (*-1\r\n)
+    inline void encode_null_array(std::string *buffer)
+    {
+        buffer->append("*-1\r\n");
+    }
+
+    // Encode a RESP Integer (:<number>\r\n)
+    inline void encode_integer(std::string *buffer, int64_t value)
+    {
+        buffer->append(":");
+        buffer->append(std::to_string(value));
+        buffer->append("\r\n");
+    }
+
+    // Encode a RESP Error (-ERR <message>\r\n)
+    inline void encode_error(std::string *buffer, std::string_view message)
+    {
+        buffer->append("-ERR ");
+        buffer->append(message);
+        buffer->append("\r\n");
+    }
+
+    // Encode a RESP Array header (*<count>\r\n)
+    inline void encode_array_header(std::string *buffer, size_t count)
+    {
+        buffer->append("*");
+        buffer->append(std::to_string(count));
+        buffer->append("\r\n");
+    }
+
+    // Encode a RESP Array of bulk strings
+    inline void encode_bulk_string_array(std::string *buffer, const std::vector<std::string> &items)
+    {
+        encode_array_header(buffer, items.size());
+        for (const auto &item : items)
+        {
+            encode_bulk_string(buffer, item);
+        }
+    }
+
 }

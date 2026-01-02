@@ -1,11 +1,11 @@
 #include "db/db.h"
+#include "utils/utils.h"
 
 namespace REDIS_NAMESPACE
 {
-    void DB::handle_incr(ClientContext &c, int total_commands)
+    void DB::handle_incr(ClientContext &c, const IncrCommand &cmd)
     {
-        ParsedToken key_token = Parser::Parse(c);
-        std::string key{c.client->read_buffer.data() + key_token.start_pos, key_token.end_pos - key_token.start_pos + 1};
+        const std::string &key = cmd.key;
         auto it = store.find(key);
         if (it == store.end())
         {
@@ -13,7 +13,7 @@ namespace REDIS_NAMESPACE
             redisObj.type = RedisObjectEncodingType::STRING;
             redisObj.stringPtr = std::make_unique<std::string>("1");
             store[key] = std::move(redisObj);
-            c.client->write_buffer.append(":1\r\n");
+            encode_integer(&c.client->write_buffer, 1);
         }
         else
         {
@@ -26,7 +26,7 @@ namespace REDIS_NAMESPACE
                 if (is_okay)
                 {
                     value++;
-                    c.client->write_buffer.append(":" + std::to_string(value) + "\r\n");
+                    encode_integer(&c.client->write_buffer, value);
 
                     object.stringPtr = std::make_unique<std::string>(std::to_string(value));
                     store[key] = std::move(object);
@@ -34,7 +34,7 @@ namespace REDIS_NAMESPACE
             }
             if (!is_okay)
             {
-                c.client->write_buffer.append("-ERR value is not an integer or out of range\r\n");
+                encode_error(&c.client->write_buffer, "value is not an integer or out of range");
             }
         }
         c.current_write_position = 0;

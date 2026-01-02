@@ -1,4 +1,5 @@
 #include "db.h"
+#include "parser/command-parser.h"
 #include "../listpack.h"
 #include <algorithm>
 #include <cassert>
@@ -14,66 +15,74 @@ namespace REDIS_NAMESPACE
             return;
         }
         auto total_commands = t.length;
-        t = Parser::Parse(c);
-        std::string_view slice{c.client->read_buffer.data() + t.start_pos, t.end_pos - t.start_pos + 1};
-
-        if (is_equal(slice, "ECHO"))
-            handle_echo(c);
-        else if (is_equal(slice, "PING"))
-            handle_ping(c);
-
-        else if (is_equal(slice, "SET"))
-            handle_set(c, total_commands - 1);
-
-        else if (is_equal(slice, "GET"))
-            handle_get_or_type(c, false);
-        else if (is_equal(slice, "TYPE"))
-            handle_get_or_type(c, true);
-
-        else if (is_equal(slice, "RPUSH"))
-            handle_push(c, total_commands - 1, false);
-
-        else if (is_equal(slice, "LPUSH"))
-            handle_push(c, total_commands - 1, true);
-
-        else if (is_equal(slice, "LRANGE"))
-            handle_lrange(c);
-
-        else if (is_equal(slice, "LLEN"))
-            handle_llen(c);
-
-        else if (is_equal(slice, "LPOP"))
-            handle_lpop(c, total_commands - 1);
-
-        else if (is_equal(slice, "BLPOP"))
-            handle_blpop(c, total_commands - 1);
-        else if (is_equal(slice, "XADD"))
-            handle_xadd(c, total_commands - 1);
-        else if (is_equal(slice, "XRANGE"))
-            handle_xrange(c, total_commands - 1);
-        else if (is_equal(slice, "XREAD"))
-            handle_xread(c, total_commands - 1);
-        else if (is_equal(slice, "INCR"))
-            handle_incr(c, total_commands - 1);
-        else
-            handle_ping(c);
+        
+        // Parse command using CommandParser
+        Command cmd = CommandParser::parseCommand(c, total_commands);
+        
+        // Execute based on command type
+        switch (cmd.type)
+        {
+            case CommandType::PING:
+                handle_ping(c);
+                break;
+            case CommandType::ECHO:
+                handle_echo(c, static_cast<const EchoCommand&>(cmd));
+                break;
+            case CommandType::SET:
+                handle_set(c, static_cast<const SetCommand&>(cmd));
+                break;
+            case CommandType::GET:
+                handle_get_or_type(c, static_cast<const GetCommand&>(cmd), false);
+                break;
+            case CommandType::TYPE:
+                handle_get_or_type(c, static_cast<const TypeCommand&>(cmd), true);
+                break;
+            case CommandType::INCR:
+                handle_incr(c, static_cast<const IncrCommand&>(cmd));
+                break;
+            case CommandType::RPUSH:
+                handle_push(c, static_cast<const RpushCommand&>(cmd), false);
+                break;
+            case CommandType::LPUSH:
+                handle_push(c, static_cast<const LpushCommand&>(cmd), true);
+                break;
+            case CommandType::LRANGE:
+                handle_lrange(c, static_cast<const LrangeCommand&>(cmd));
+                break;
+            case CommandType::LLEN:
+                handle_llen(c, static_cast<const LlenCommand&>(cmd));
+                break;
+            case CommandType::LPOP:
+                handle_lpop(c, static_cast<const LpopCommand&>(cmd));
+                break;
+            case CommandType::BLPOP:
+                handle_blpop(c, static_cast<const BlpopCommand&>(cmd));
+                break;
+            case CommandType::XADD:
+                handle_xadd(c, static_cast<const XaddCommand&>(cmd));
+                break;
+            case CommandType::XRANGE:
+                handle_xrange(c, static_cast<const XrangeCommand&>(cmd));
+                break;
+            case CommandType::XREAD:
+                handle_xread(c, static_cast<const XreadCommand&>(cmd));
+                break;
+            default:
+                handle_ping(c);
+                break;
+        }
     }
 
     void DB::handle_ping(ClientContext &c)
     {
-        c.client->write_buffer.append("+PONG\r\n");
+        encode_simple_string(&c.client->write_buffer, "PONG");
         c.current_write_position = 0;
     }
 
-    void DB::handle_echo(ClientContext &c)
+    void DB::handle_echo(ClientContext &c, const EchoCommand &cmd)
     {
-        ParsedToken t = Parser::Parse(c);
-        if (t.type == ParsedToken::Type::BULK_STRING)
-        {
-            std::string arg{c.client->read_buffer.data() + t.start_pos, t.end_pos - t.start_pos + 1};
-            c.client->write_buffer.append("$" + std::to_string(arg.length()) + "\r\n" + arg + "\r\n");
-            c.current_write_position = 0;
-        }
+        encode_bulk_string(&c.client->write_buffer, cmd.message);
+        c.current_write_position = 0;
     }
 
     void DB::signal_key_ready(const std::string &key, ClientContext &context)
