@@ -3,7 +3,8 @@
 1. Refactor this
 2. Implement BLOCK
 3. Think how to implement this
-
+4. Now pause for sometime and go through redis implementation until Tuesday
+5. Refactor and then move ahead else it will be very difficult to move
 */
 
 namespace REDIS_NAMESPACE

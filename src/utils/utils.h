@@ -1,5 +1,6 @@
 #pragma once
 #include <chrono>
+#include <cstdint>
 #include <string>
 
 #define MAX_BUFFER_SIZE 4096
@@ -22,6 +23,61 @@ namespace REDIS_NAMESPACE
         }
         return true;
     }
+    inline bool convert_string_to_number(std::string_view s, int64_t *value)
+    {
+        bool isNegative = false;
+        uint64_t ptr = 0;
+        uint64_t number = UINT64_MAX;
+        if (!value)
+            return false;
+
+        if (s.size() == 1 && s[0] == '0')
+        {
+            *value = 0;
+            return true;
+        }
+        /*Optionally check for - sign*/
+        if (s.size() > 1 && s[ptr] == '-')
+        {
+            isNegative = true;
+            ptr += 1;
+        }
+        /*Find the first non negative integer*/
+        if (!(ptr < s.size() && isdigit(s[ptr])))
+        {
+            return false;
+        }
+        number = s[ptr] - '0';
+        ptr++;
+        /*Normal scenario*/
+        while (ptr < s.size() && isdigit(s[ptr]))
+        {
+            auto currDigit = s[ptr] - '0';
+            if (number > (UINT64_MAX) / 10)
+                return false;
+            number = number * 10;
+            if (number > UINT64_MAX - currDigit)
+                return false;
+            number = number + currDigit;
+            ptr++;
+        }
+        if (ptr != s.size())
+            return false; /* Pre mature termination*/
+        if (isNegative)
+        {
+            if (number > ((uint64_t)INT64_MAX + 1))
+                return false;
+            *value = -number;
+        }
+        else
+        {
+            if (number > INT64_MAX)
+                return false;
+            *value = number;
+        }
+        return true;
+    }
+
     inline bool is_equal(std::string_view s1, std::string_view s2)
     {
         if (s1.size() != s2.size())
