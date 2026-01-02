@@ -31,10 +31,8 @@ namespace REDIS_NAMESPACE
         void handle_ping(ClientContext &context);
         void handle_echo(ClientContext &context, const EchoCommand &cmd);
         void handle_set(ClientContext &context, const SetCommand &cmd);
-        void handle_get_or_type(ClientContext &context, const GetCommand &cmd, bool isType);
-        void handle_get_or_type(ClientContext &context, const TypeCommand &cmd, bool isType);
-        void handle_push(ClientContext &context, const RpushCommand &cmd, bool is_prepend);
-        void handle_push(ClientContext &context, const LpushCommand &cmd, bool is_prepend);
+        void handle_get_or_type(ClientContext &context, const Command &cmd);
+        void handle_push(ClientContext &context, const Command &cmd);
         void handle_lrange(ClientContext &context, const LrangeCommand &cmd);
         void handle_llen(ClientContext &context, const LlenCommand &cmd);
         void handle_lpop(ClientContext &context, const LpopCommand &cmd);
@@ -44,8 +42,6 @@ namespace REDIS_NAMESPACE
         void handle_xread(ClientContext &context, const XreadCommand &cmd);
         void handle_incr(ClientContext &context, const IncrCommand &cmd);
         void signal_key_ready(const std::string &key, ClientContext &context);
-        void write_blpop_response(std::shared_ptr<Client> &client, const std::string &key, const std::string &value);
-        bool handle_blocked_key_push(ClientContext &c, int &total_commands, const std::string &key);
         void handle_blocked_xread_clients(const std::string &key, ClientContext &context);
         void write_xread_response(std::shared_ptr<Client> &client, const std::string &key, const std::string &start_id);
         uint32_t create_new_list(const std::string &key, unsigned char *value_ptr, uint32_t value_len, bool is_prepend);

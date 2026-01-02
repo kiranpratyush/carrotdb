@@ -7,7 +7,7 @@ namespace REDIS_NAMESPACE
     {
         const std::string &key = cmd.key;
         const std::string &stream_id = cmd.stream_id;
-        
+
         // Build raw_value from field_values
         std::string raw_value;
         for (const auto &[field, value] : cmd.field_values)
@@ -27,6 +27,12 @@ namespace REDIS_NAMESPACE
             redisObject.streamPtr = std::move(stream);
             store[key] = std::move(redisObject);
             it = store.find(key);
+        }
+        if (it->second.type != RedisObjectEncodingType::STREAM)
+        {
+            encode_error(&c.client->write_buffer, "Key exists with different data type");
+            c.current_write_position = 0;
+            return;
         }
 
         // Insert into the stream

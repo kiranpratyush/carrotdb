@@ -8,68 +8,58 @@ namespace REDIS_NAMESPACE
 {
     void DB::execute(ClientContext &c)
     {
-        ParsedToken t = Parser::Parse(c);
+        std::unique_ptr<Command> cmd = CommandParser::parseCommand(c);
 
-        if (t.type != ParsedToken::Type::ARRAY)
+        switch (cmd->type)
         {
-            return;
-        }
-        auto total_commands = t.length;
-        
-        // Parse command using CommandParser
-        Command cmd = CommandParser::parseCommand(c, total_commands);
-        
-        // Execute based on command type
-        switch (cmd.type)
-        {
-            case CommandType::PING:
-                handle_ping(c);
-                break;
-            case CommandType::ECHO:
-                handle_echo(c, static_cast<const EchoCommand&>(cmd));
-                break;
-            case CommandType::SET:
-                handle_set(c, static_cast<const SetCommand&>(cmd));
-                break;
-            case CommandType::GET:
-                handle_get_or_type(c, static_cast<const GetCommand&>(cmd), false);
-                break;
-            case CommandType::TYPE:
-                handle_get_or_type(c, static_cast<const TypeCommand&>(cmd), true);
-                break;
-            case CommandType::INCR:
-                handle_incr(c, static_cast<const IncrCommand&>(cmd));
-                break;
-            case CommandType::RPUSH:
-                handle_push(c, static_cast<const RpushCommand&>(cmd), false);
-                break;
-            case CommandType::LPUSH:
-                handle_push(c, static_cast<const LpushCommand&>(cmd), true);
-                break;
-            case CommandType::LRANGE:
-                handle_lrange(c, static_cast<const LrangeCommand&>(cmd));
-                break;
-            case CommandType::LLEN:
-                handle_llen(c, static_cast<const LlenCommand&>(cmd));
-                break;
-            case CommandType::LPOP:
-                handle_lpop(c, static_cast<const LpopCommand&>(cmd));
-                break;
-            case CommandType::BLPOP:
-                handle_blpop(c, static_cast<const BlpopCommand&>(cmd));
-                break;
-            case CommandType::XADD:
-                handle_xadd(c, static_cast<const XaddCommand&>(cmd));
-                break;
-            case CommandType::XRANGE:
-                handle_xrange(c, static_cast<const XrangeCommand&>(cmd));
-                break;
-            case CommandType::XREAD:
-                handle_xread(c, static_cast<const XreadCommand&>(cmd));
-                break;
-            default:
-                handle_ping(c);
-                break;
+        case CommandType::PING:
+            handle_ping(c);
+            break;
+        case CommandType::ECHO:
+            handle_echo(c, dynamic_cast<const EchoCommand &>(*cmd));
+            break;
+        case CommandType::SET:
+            handle_set(c, static_cast<const SetCommand &>(*cmd));
+            break;
+        case CommandType::GET:
+            handle_get_or_type(c, *cmd);
+            break;
+        case CommandType::TYPE:
+            handle_get_or_type(c, *cmd);
+            break;
+        case CommandType::INCR:
+            handle_incr(c, static_cast<const IncrCommand &>(*cmd));
+            break;
+        case CommandType::RPUSH:
+            handle_push(c, static_cast<const RpushCommand &>(*cmd));
+            break;
+        case CommandType::LPUSH:
+            handle_push(c, static_cast<const LpushCommand &>(*cmd));
+            break;
+        case CommandType::LRANGE:
+            handle_lrange(c, static_cast<const LrangeCommand &>(*cmd));
+            break;
+        case CommandType::LLEN:
+            handle_llen(c, static_cast<const LlenCommand &>(*cmd));
+            break;
+        case CommandType::LPOP:
+            handle_lpop(c, static_cast<const LpopCommand &>(*cmd));
+            break;
+        case CommandType::BLPOP:
+            handle_blpop(c, static_cast<const BlpopCommand &>(*cmd));
+            break;
+        case CommandType::XADD:
+            handle_xadd(c, static_cast<const XaddCommand &>(*cmd));
+            break;
+        case CommandType::XRANGE:
+            handle_xrange(c, static_cast<const XrangeCommand &>(*cmd));
+            break;
+        case CommandType::XREAD:
+            handle_xread(c, static_cast<const XreadCommand &>(*cmd));
+            break;
+        default:
+            handle_ping(c);
+            break;
         }
     }
 

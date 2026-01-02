@@ -41,13 +41,13 @@ namespace REDIS_NAMESPACE
             start_index = 0;
         if (end_index < 0)
         {
-            c.client->write_buffer.append("*0\r\n");
+            encode_empty_array(&c.client->write_buffer);
             c.current_write_position = 0;
             return;
         }
         if (start_index >= (long long)list_length)
         {
-            c.client->write_buffer.append("*0\r\n");
+            encode_empty_array(&c.client->write_buffer);
             c.current_write_position = 0;
             return;
         }
@@ -73,13 +73,7 @@ namespace REDIS_NAMESPACE
             }
         }
 
-        // Build RESP array response
-        c.client->write_buffer.append("*" + std::to_string(result.size()) + "\r\n");
-        for (const auto &item : result)
-        {
-            c.client->write_buffer.append("$" + std::to_string(item.length()) + "\r\n");
-            c.client->write_buffer.append(item + "\r\n");
-        }
+        encode_bulk_string_array(&c.client->write_buffer, result);
         c.current_write_position = 0;
     }
 }

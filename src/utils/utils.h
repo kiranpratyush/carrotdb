@@ -2,6 +2,7 @@
 #include <chrono>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #define MAX_BUFFER_SIZE 4096
 

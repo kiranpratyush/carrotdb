@@ -54,27 +54,16 @@ namespace REDIS_NAMESPACE
         }
         if (result.size() == 0)
         {
-            c.client->write_buffer.append("$-1\r\n");
-            c.current_write_position = 0;
+            encode_null_bulk_string(&c.client->write_buffer);
             return;
         }
         else if (result.size() == 1)
         {
-            // Single result - encode as bulk string
-            c.client->write_buffer.append("$" + std::to_string(result[0].length()) + "\r\n");
-            c.client->write_buffer.append(result[0] + "\r\n");
-            c.current_write_position = 0;
+            encode_bulk_string(&c.client->write_buffer, result[0]);
         }
         else
         {
-            // Multiple results - encode as array
-            c.client->write_buffer.append("*" + std::to_string(result.size()) + "\r\n");
-            for (const auto &item : result)
-            {
-                c.client->write_buffer.append("$" + std::to_string(item.length()) + "\r\n");
-                c.client->write_buffer.append(item + "\r\n");
-            }
-            c.current_write_position = 0;
+            encode_bulk_string_array(&c.client->write_buffer, result);
         }
     }
 }

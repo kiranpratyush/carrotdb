@@ -1,11 +1,4 @@
 #include "db/db.h"
-/*
-1. Refactor this
-2. Implement BLOCK
-3. Think how to implement this
-4. Now pause for sometime and go through redis implementation until Tuesday
-5. Refactor and then move ahead else it will be very difficult to move
-*/
 
 namespace REDIS_NAMESPACE
 {
@@ -17,25 +10,20 @@ namespace REDIS_NAMESPACE
         client.stream_key = key;
         blocked_keys[std::string(key)].push(std::move(client));
     }
-    static void writeEmptyArray(ClientContext &c)
-    {
-        c.client->write_buffer.append("*0\r\n");
-        c.current_write_position = 0;
-    }
 
     void DB::write_xread_response(std::shared_ptr<Client> &client, const std::string &key, const std::string &start_id)
     {
         auto it = store.find(key);
         if (it == store.end())
         {
-            client->write_buffer.append("*-1\r\n");
+            encode_null_bulk_string(&client->write_buffer);
             return;
         }
 
         RedisObject &redisObj = it->second;
         if (redisObj.type != RedisObjectEncodingType::STREAM || !redisObj.streamPtr)
         {
-            client->write_buffer.append("*-1\r\n");
+            encode_null_bulk_string(&client->write_buffer);
             return;
         }
 
@@ -46,17 +34,16 @@ namespace REDIS_NAMESPACE
         const bool ok = redisObj.streamPtr->xrangeData(actualStartId, "+", entries, true);
         if (!ok || entries.empty())
         {
-            client->write_buffer.append("*-1\r\n");
+            encode_null_array(&client->write_buffer);
             return;
         }
 
         // Write XREAD response format: *1 (one stream) *2 (key and entries)
-        client->write_buffer.append("*1\r\n");
-        client->write_buffer.append("*2\r\n");
-        client->write_buffer.append("$" + std::to_string(key.size()) + "\r\n");
-        client->write_buffer.append(key + "\r\n");
+        encode_array_header(&client->write_buffer, 1);
+        encode_array_header(&client->write_buffer, 2);
+        encode_bulk_string(&client->write_buffer, key);
 
-        client->write_buffer.append("*" + std::to_string(entries.size()) + "\r\n");
+        encode_array_header(&client->write_buffer, entries.size());
         for (const auto &[binaryId, rawPayload] : entries)
         {
             StreamID sid = StreamID::fromBinary(binaryId);
@@ -65,16 +52,9 @@ namespace REDIS_NAMESPACE
             std::vector<std::string> fields{};
             (void)Parser::parse_bulk_string_sequence(rawPayload, fields);
 
-            client->write_buffer.append("*2\r\n");
-            client->write_buffer.append("$" + std::to_string(sidStr.size()) + "\r\n");
-            client->write_buffer.append(sidStr + "\r\n");
-
-            client->write_buffer.append("*" + std::to_string(fields.size()) + "\r\n");
-            for (const auto &item : fields)
-            {
-                client->write_buffer.append("$" + std::to_string(item.size()) + "\r\n");
-                client->write_buffer.append(item + "\r\n");
-            }
+            encode_array_header(&client->write_buffer, 2);
+            encode_bulk_string(&client->write_buffer, sidStr);
+            encode_bulk_string_array(&client->write_buffer, fields);
         }
     }
 
@@ -85,8 +65,6 @@ namespace REDIS_NAMESPACE
         {
             return;
         }
-
-        // Process all blocked clients for this key
         while (!it->second.empty())
         {
             BlockedXreadClient blocked_client = it->second.front();
@@ -95,15 +73,10 @@ namespace REDIS_NAMESPACE
             auto blocked_client_ptr = blocked_client.client.lock();
             if (blocked_client_ptr)
             {
-                // Perform XREAD for the blocked client
                 write_xread_response(blocked_client_ptr, blocked_client.stream_key, blocked_client.stream_id);
-
-                // Store the unblocked client fd so server can make it ready for write
                 context.unblocked_client_fd = blocked_client.client_fd;
             }
         }
-
-        // Remove the key entry if queue is now empty
         if (it->second.empty())
         {
             blocked_xread_keys.erase(it);
@@ -120,7 +93,7 @@ namespace REDIS_NAMESPACE
 
         if (keys.size() != startIds.size())
         {
-            writeEmptyArray(c);
+            encode_empty_array(&c.client->write_buffer);
             return;
         }
 
@@ -160,7 +133,7 @@ namespace REDIS_NAMESPACE
                 }
 
                 else
-                    writeEmptyArray(c);
+                    encode_empty_array(&c.client->write_buffer);
             }
             RedisObject &redisObj = it->second;
             if (redisObj.type != RedisObjectEncodingType::STREAM || !redisObj.streamPtr)
@@ -184,18 +157,17 @@ namespace REDIS_NAMESPACE
 
         if (replies.empty())
         {
-            writeEmptyArray(c);
+            encode_empty_array(&c.client->write_buffer);
             return;
         }
 
-        c.client->write_buffer.append("*" + std::to_string(replies.size()) + "\r\n");
+        encode_array_header(&c.client->write_buffer, replies.size());
         for (const auto &reply : replies)
         {
-            c.client->write_buffer.append("*2\r\n");
-            c.client->write_buffer.append("$" + std::to_string(reply.key.size()) + "\r\n");
-            c.client->write_buffer.append(reply.key + "\r\n");
+            encode_array_header(&c.client->write_buffer, 2);
+            encode_bulk_string(&c.client->write_buffer, reply.key);
 
-            c.client->write_buffer.append("*" + std::to_string(reply.entries.size()) + "\r\n");
+            encode_array_header(&c.client->write_buffer, reply.entries.size());
             for (const auto &[binaryId, rawPayload] : reply.entries)
             {
                 StreamID sid = StreamID::fromBinary(binaryId);
@@ -204,16 +176,9 @@ namespace REDIS_NAMESPACE
                 std::vector<std::string> fields{};
                 (void)Parser::parse_bulk_string_sequence(rawPayload, fields);
 
-                c.client->write_buffer.append("*2\r\n");
-                c.client->write_buffer.append("$" + std::to_string(sidStr.size()) + "\r\n");
-                c.client->write_buffer.append(sidStr + "\r\n");
-
-                c.client->write_buffer.append("*" + std::to_string(fields.size()) + "\r\n");
-                for (const auto &item : fields)
-                {
-                    c.client->write_buffer.append("$" + std::to_string(item.size()) + "\r\n");
-                    c.client->write_buffer.append(item + "\r\n");
-                }
+                encode_array_header(&c.client->write_buffer, 2);
+                encode_bulk_string(&c.client->write_buffer, sidStr);
+                encode_bulk_string_array(&c.client->write_buffer, fields);
             }
         }
 

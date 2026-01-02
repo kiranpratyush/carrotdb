@@ -3,59 +3,6 @@
 
 namespace REDIS_NAMESPACE
 {
-    void DB::write_blpop_response(std::shared_ptr<Client> &client, const std::string &key, const std::string &value)
-    {
-        client->write_buffer.append("*2\r\n");
-        client->write_buffer.append("$" + std::to_string(key.length()) + "\r\n");
-        client->write_buffer.append(key + "\r\n");
-        client->write_buffer.append("$" + std::to_string(value.length()) + "\r\n");
-        client->write_buffer.append(value + "\r\n");
-    }
-
-    bool DB::handle_blocked_key_push(ClientContext &c, int &total_commands, const std::string &key)
-    {
-        auto blocked_it = blocked_keys.find(key);
-        if (blocked_it == blocked_keys.end() || blocked_it->second.empty())
-        {
-            return false;
-        }
-
-        // Get the first blocked client from the queue
-        BlockedClient blocked_client = blocked_it->second.front();
-        blocked_it->second.pop();
-
-        // If queue is now empty, remove the key entry
-        if (blocked_it->second.empty())
-        {
-            blocked_keys.erase(blocked_it);
-        }
-
-        auto blocked_client_ptr = blocked_client.client.lock();
-        if (blocked_client_ptr)
-        {
-            ParsedToken value_token = Parser::Parse(c);
-            if (value_token.type == ParsedToken::Type::BULK_STRING)
-            {
-                std::string value{c.client->read_buffer.data() + value_token.start_pos,
-                                  value_token.end_pos - value_token.start_pos + 1};
-
-                write_blpop_response(blocked_client_ptr, key, value);
-                c.unblocked_client_fd = blocked_client.client_fd;
-            }
-        }
-
-        // Skip remaining tokens
-        while (total_commands > 0)
-        {
-            Parser::Parse(c);
-            total_commands--;
-        }
-
-        c.client->write_buffer.append(":1\r\n");
-        c.current_write_position = 0;
-        return true;
-    }
-
     uint32_t DB::create_new_list(const std::string &key, unsigned char *value_ptr,
                                  uint32_t value_len, bool is_prepend)
     {
@@ -100,41 +47,84 @@ namespace REDIS_NAMESPACE
         }
     }
 
-    void DB::handle_push(ClientContext &c, const RpushCommand &cmd, bool is_prepend)
+    void DB::handle_push(ClientContext &c, const Command &cmd)
     {
-        const std::string &key = cmd.key;
-        // Note: For now, we skip blocked key handling since it requires more complex refactoring
-        // TODO: Refactor handle_blocked_key_push to work with Command objects
-        
+        std::string key_str;
+        const std::vector<std::string> *values{};
+        bool is_prepend{};
+
+        if (cmd.type == CommandType::LPUSH)
+        {
+            is_prepend = true;
+            const LpushCommand &lpushCmd = static_cast<const LpushCommand &>(cmd);
+            key_str = std::string(lpushCmd.key);
+            values = &lpushCmd.values;
+        }
+        else if (cmd.type == CommandType::RPUSH)
+        {
+            is_prepend = false;
+            const RpushCommand &rpushCmd = static_cast<const RpushCommand &>(cmd);
+            key_str = std::string(rpushCmd.key);
+            values = &rpushCmd.values;
+        }
+
+        // Check if there are blocked clients waiting on this key
+        auto blocked_it = blocked_keys.find(key_str);
+        if (blocked_it != blocked_keys.end() && !blocked_it->second.empty())
+        {
+            // Handle blocked clients - unblock the first client with the first value
+            if (!values->empty())
+            {
+                BlockedClient blocked_client = blocked_it->second.front();
+                blocked_it->second.pop();
+
+                // If queue is now empty, remove the key entry
+                if (blocked_it->second.empty())
+                {
+                    blocked_keys.erase(blocked_it);
+                }
+
+                auto blocked_client_ptr = blocked_client.client.lock();
+                if (blocked_client_ptr)
+                {
+                    // Send the first value to the blocked client as an array [key, value]
+                    const std::string &first_value = (*values)[0];
+                    encode_bulk_string_array(&blocked_client_ptr->write_buffer, {key_str, first_value});
+                    c.unblocked_client_fd = blocked_client.client_fd;
+                }
+
+                // Push remaining values (if any) to the list
+                uint32_t len = 0;
+                for (size_t i = 1; i < values->size(); ++i)
+                {
+                    const std::string &value = (*values)[i];
+                    unsigned char *value_ptr = reinterpret_cast<unsigned char *>(
+                        const_cast<char *>(value.data()));
+                    uint32_t value_len = value.length();
+
+                    len = push_value_to_list(key_str, value_ptr, value_len, is_prepend);
+                }
+
+                // Return the count of values pushed (excluding the one sent to blocked client)
+                encode_integer(&c.client->write_buffer, values->size());
+                c.current_write_position = 0;
+                return;
+            }
+        }
+
+        // Normal push operation - no blocked clients
         uint32_t len{};
-        for (const auto &value : cmd.values)
+        for (const auto &value : *values)
         {
             unsigned char *value_ptr = reinterpret_cast<unsigned char *>(
-                const_cast<char*>(value.data()));
+                const_cast<char *>(value.data()));
             uint32_t value_len = value.length();
 
-            len = push_value_to_list(key, value_ptr, value_len, is_prepend);
+            len = push_value_to_list(key_str, value_ptr, value_len, is_prepend);
         }
 
         encode_integer(&c.client->write_buffer, len);
         c.current_write_position = 0;
     }
 
-    void DB::handle_push(ClientContext &c, const LpushCommand &cmd, bool is_prepend)
-    {
-        const std::string &key = cmd.key;
-        
-        uint32_t len{};
-        for (const auto &value : cmd.values)
-        {
-            unsigned char *value_ptr = reinterpret_cast<unsigned char *>(
-                const_cast<char*>(value.data()));
-            uint32_t value_len = value.length();
-
-            len = push_value_to_list(key, value_ptr, value_len, is_prepend);
-        }
-
-        encode_integer(&c.client->write_buffer, len);
-        c.current_write_position = 0;
-    }
 }

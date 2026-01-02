@@ -51,7 +51,7 @@ namespace REDIS_NAMESPACE
         auto listpackPtr = lpDelete(std::move(redisObject.listPack), p, nullptr);
         redisObject.listPack = std::move(listpackPtr);
 
-        write_blpop_response(client, key, value);
+        encode_bulk_string_array(&client->write_buffer, {key, value});
         context.current_write_position = 0;
     }
     int DB::get_next_timeout_ms()

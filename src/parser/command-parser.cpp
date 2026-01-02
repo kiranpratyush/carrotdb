@@ -2,16 +2,18 @@
 #include "parser/parser.h"
 #include "models/resp.h"
 #include "utils/utils.h"
+#include "iostream"
+#include <memory>
 
 namespace REDIS_NAMESPACE
 {
-    Command CommandParser::parseCommand(ClientContext &c, int total_commands)
+    std::unique_ptr<Command> CommandParser::parseCommand(ClientContext &c)
     {
         ParsedToken t = Parser::Parse(c);
 
         if (t.type != ParsedToken::Type::ARRAY)
         {
-            return UnknowCommand();
+            return std::make_unique<UnknowCommand>();
         }
         auto total_commands = t.length;
         t = Parser::Parse(c);
@@ -48,43 +50,40 @@ namespace REDIS_NAMESPACE
         else if (is_equal(cmd_name, "XREAD"))
             return parseXreadCommand(c, total_commands - 1);
 
-        return UnknowCommand{};
+        return std::make_unique<UnknowCommand>();
     }
 
-    Command CommandParser::parsePingCommand(ClientContext &c)
+    std::unique_ptr<Command> CommandParser::parsePingCommand(ClientContext &c)
     {
-        return PingCommand{};
+        return std::make_unique<PingCommand>();
     }
 
-    Command CommandParser::parseEchoCommand(ClientContext &c)
+    std::unique_ptr<Command> CommandParser::parseEchoCommand(ClientContext &c)
     {
         ParsedToken message_token = Parser::Parse(c);
         if (message_token.type != ParsedToken::Type::BULK_STRING)
-            return UnknowCommand{};
-
-        std::string_view read_buffer = c.client->read_buffer;
-        EchoCommand cmd{};
-        cmd.message = std::string{read_buffer.data() + message_token.start_pos,
-                                  message_token.end_pos - message_token.start_pos + 1};
+            return std::make_unique<UnknowCommand>();
+        auto cmd = std::make_unique<EchoCommand>();
+        cmd->message = std::string{c.client->read_buffer.data() + message_token.start_pos, message_token.end_pos - message_token.start_pos + 1};
         return cmd;
     }
 
-    Command CommandParser::parseSetCommand(ClientContext &c, int total_commands)
+    std::unique_ptr<Command> CommandParser::parseSetCommand(ClientContext &c, int total_commands)
     {
         ParsedToken key_token = Parser::Parse(c);
         if (key_token.type != ParsedToken::Type::BULK_STRING)
-            return UnknowCommand{};
+            return std::make_unique<UnknowCommand>();
 
         ParsedToken value_token = Parser::Parse(c);
         if (value_token.type != ParsedToken::Type::BULK_STRING)
-            return UnknowCommand{};
+            return std::make_unique<UnknowCommand>();
 
         std::string_view read_buffer = c.client->read_buffer;
-        SetCommand cmd{};
-        cmd.key = std::string{read_buffer.data() + key_token.start_pos,
-                              key_token.end_pos - key_token.start_pos + 1};
-        cmd.value = std::string{read_buffer.data() + value_token.start_pos,
-                                value_token.end_pos - value_token.start_pos + 1};
+        auto cmd = std::make_unique<SetCommand>();
+        cmd->key = std::string{read_buffer.data() + key_token.start_pos,
+                               key_token.end_pos - key_token.start_pos + 1};
+        cmd->value = std::string{read_buffer.data() + value_token.start_pos,
+                                 value_token.end_pos - value_token.start_pos + 1};
 
         total_commands -= 2; // key and value consumed
 
@@ -107,7 +106,7 @@ namespace REDIS_NAMESPACE
                                             ex_value_token.end_pos - ex_value_token.start_pos + 1};
                     unsigned long long ex_val;
                     if (convert_positive_string_to_number(ex_str, ex_val))
-                        cmd.ex = ex_val;
+                        cmd->ex = ex_val;
                 }
                 total_commands -= 2;
             }
@@ -120,7 +119,7 @@ namespace REDIS_NAMESPACE
                                             px_value_token.end_pos - px_value_token.start_pos + 1};
                     unsigned long long px_val;
                     if (convert_positive_string_to_number(px_str, px_val))
-                        cmd.px = px_val;
+                        cmd->px = px_val;
                 }
                 total_commands -= 2;
             }
@@ -133,55 +132,55 @@ namespace REDIS_NAMESPACE
         return cmd;
     }
 
-    Command CommandParser::parseGetCommand(ClientContext &c)
+    std::unique_ptr<Command> CommandParser::parseGetCommand(ClientContext &c)
     {
         ParsedToken key_token = Parser::Parse(c);
         if (key_token.type != ParsedToken::Type::BULK_STRING)
-            return UnknowCommand{};
+            return std::make_unique<UnknowCommand>();
 
         std::string_view read_buffer = c.client->read_buffer;
-        GetCommand cmd{};
-        cmd.key = std::string{read_buffer.data() + key_token.start_pos,
-                              key_token.end_pos - key_token.start_pos + 1};
+        auto cmd = std::make_unique<GetCommand>();
+        cmd->key = std::string{read_buffer.data() + key_token.start_pos,
+                               key_token.end_pos - key_token.start_pos + 1};
         return cmd;
     }
 
-    Command CommandParser::parseTypeCommand(ClientContext &c)
+    std::unique_ptr<Command> CommandParser::parseTypeCommand(ClientContext &c)
     {
         ParsedToken key_token = Parser::Parse(c);
         if (key_token.type != ParsedToken::Type::BULK_STRING)
-            return UnknowCommand{};
+            return std::make_unique<UnknowCommand>();
 
         std::string_view read_buffer = c.client->read_buffer;
-        TypeCommand cmd{};
-        cmd.key = std::string{read_buffer.data() + key_token.start_pos,
-                              key_token.end_pos - key_token.start_pos + 1};
+        auto cmd = std::make_unique<TypeCommand>();
+        cmd->key = std::string{read_buffer.data() + key_token.start_pos,
+                               key_token.end_pos - key_token.start_pos + 1};
         return cmd;
     }
 
-    Command CommandParser::parseIncrCommand(ClientContext &c)
+    std::unique_ptr<Command> CommandParser::parseIncrCommand(ClientContext &c)
     {
         ParsedToken key_token = Parser::Parse(c);
         if (key_token.type != ParsedToken::Type::BULK_STRING)
-            return UnknowCommand{};
+            return std::make_unique<UnknowCommand>();
 
         std::string_view read_buffer = c.client->read_buffer;
-        IncrCommand cmd{};
-        cmd.key = std::string{read_buffer.data() + key_token.start_pos,
-                              key_token.end_pos - key_token.start_pos + 1};
+        auto cmd = std::make_unique<IncrCommand>();
+        cmd->key = std::string{read_buffer.data() + key_token.start_pos,
+                               key_token.end_pos - key_token.start_pos + 1};
         return cmd;
     }
 
-    Command CommandParser::parseRpushCommand(ClientContext &c, int total_commands)
+    std::unique_ptr<Command> CommandParser::parseRpushCommand(ClientContext &c, int total_commands)
     {
         ParsedToken key_token = Parser::Parse(c);
         if (key_token.type != ParsedToken::Type::BULK_STRING)
-            return UnknowCommand{};
+            return std::make_unique<UnknowCommand>();
 
         std::string_view read_buffer = c.client->read_buffer;
-        RpushCommand cmd{};
-        cmd.key = std::string{read_buffer.data() + key_token.start_pos,
-                              key_token.end_pos - key_token.start_pos + 1};
+        auto cmd = std::make_unique<RpushCommand>();
+        cmd->key = std::string{read_buffer.data() + key_token.start_pos,
+                               key_token.end_pos - key_token.start_pos + 1};
 
         total_commands--; // key consumed
 
@@ -191,8 +190,8 @@ namespace REDIS_NAMESPACE
             ParsedToken value_token = Parser::Parse(c);
             if (value_token.type == ParsedToken::Type::BULK_STRING)
             {
-                cmd.values.push_back(std::string{read_buffer.data() + value_token.start_pos,
-                                                 value_token.end_pos - value_token.start_pos + 1});
+                cmd->values.push_back(std::string{read_buffer.data() + value_token.start_pos,
+                                                  value_token.end_pos - value_token.start_pos + 1});
             }
             total_commands--;
         }
@@ -200,16 +199,16 @@ namespace REDIS_NAMESPACE
         return cmd;
     }
 
-    Command CommandParser::parseLpushCommand(ClientContext &c, int total_commands)
+    std::unique_ptr<Command> CommandParser::parseLpushCommand(ClientContext &c, int total_commands)
     {
         ParsedToken key_token = Parser::Parse(c);
         if (key_token.type != ParsedToken::Type::BULK_STRING)
-            return UnknowCommand{};
+            return std::make_unique<UnknowCommand>();
 
         std::string_view read_buffer = c.client->read_buffer;
-        LpushCommand cmd{};
-        cmd.key = std::string{read_buffer.data() + key_token.start_pos,
-                              key_token.end_pos - key_token.start_pos + 1};
+        auto cmd = std::make_unique<LpushCommand>();
+        cmd->key = std::string{read_buffer.data() + key_token.start_pos,
+                               key_token.end_pos - key_token.start_pos + 1};
 
         total_commands--; // key consumed
 
@@ -219,8 +218,8 @@ namespace REDIS_NAMESPACE
             ParsedToken value_token = Parser::Parse(c);
             if (value_token.type == ParsedToken::Type::BULK_STRING)
             {
-                cmd.values.push_back(std::string{read_buffer.data() + value_token.start_pos,
-                                                 value_token.end_pos - value_token.start_pos + 1});
+                cmd->values.push_back(std::string{read_buffer.data() + value_token.start_pos,
+                                                  value_token.end_pos - value_token.start_pos + 1});
             }
             total_commands--;
         }
@@ -228,60 +227,60 @@ namespace REDIS_NAMESPACE
         return cmd;
     }
 
-    Command CommandParser::parseLrangeCommand(ClientContext &c)
+    std::unique_ptr<Command> CommandParser::parseLrangeCommand(ClientContext &c)
     {
         ParsedToken key_token = Parser::Parse(c);
         if (key_token.type != ParsedToken::Type::BULK_STRING)
-            return UnknowCommand{};
+            return std::make_unique<UnknowCommand>();
 
         ParsedToken start_token = Parser::Parse(c);
         if (start_token.type != ParsedToken::Type::BULK_STRING)
-            return UnknowCommand{};
+            return std::make_unique<UnknowCommand>();
 
         ParsedToken stop_token = Parser::Parse(c);
         if (stop_token.type != ParsedToken::Type::BULK_STRING)
-            return UnknowCommand{};
+            return std::make_unique<UnknowCommand>();
 
         std::string_view read_buffer = c.client->read_buffer;
-        LrangeCommand cmd{};
-        cmd.key = std::string{read_buffer.data() + key_token.start_pos,
-                              key_token.end_pos - key_token.start_pos + 1};
+        auto cmd = std::make_unique<LrangeCommand>();
+        cmd->key = std::string{read_buffer.data() + key_token.start_pos,
+                               key_token.end_pos - key_token.start_pos + 1};
 
         std::string_view start_str{read_buffer.data() + start_token.start_pos,
                                    start_token.end_pos - start_token.start_pos + 1};
         std::string_view stop_str{read_buffer.data() + stop_token.start_pos,
                                   stop_token.end_pos - stop_token.start_pos + 1};
 
-        if (!convert_string_to_number(start_str, &cmd.start) ||
-            !convert_string_to_number(stop_str, &cmd.stop))
-            return UnknowCommand{};
+        if (!convert_string_to_number(start_str, &cmd->start) ||
+            !convert_string_to_number(stop_str, &cmd->stop))
+            return std::make_unique<UnknowCommand>();
 
         return cmd;
     }
 
-    Command CommandParser::parseLlenCommand(ClientContext &c)
+    std::unique_ptr<Command> CommandParser::parseLlenCommand(ClientContext &c)
     {
         ParsedToken key_token = Parser::Parse(c);
         if (key_token.type != ParsedToken::Type::BULK_STRING)
-            return UnknowCommand{};
+            return std::make_unique<UnknowCommand>();
 
         std::string_view read_buffer = c.client->read_buffer;
-        LlenCommand cmd{};
-        cmd.key = std::string{read_buffer.data() + key_token.start_pos,
-                              key_token.end_pos - key_token.start_pos + 1};
+        auto cmd = std::make_unique<LlenCommand>();
+        cmd->key = std::string{read_buffer.data() + key_token.start_pos,
+                               key_token.end_pos - key_token.start_pos + 1};
         return cmd;
     }
 
-    Command CommandParser::parseLpopCommand(ClientContext &c, int total_commands)
+    std::unique_ptr<Command> CommandParser::parseLpopCommand(ClientContext &c, int total_commands)
     {
         ParsedToken key_token = Parser::Parse(c);
         if (key_token.type != ParsedToken::Type::BULK_STRING)
-            return UnknowCommand{};
+            return std::make_unique<UnknowCommand>();
 
         std::string_view read_buffer = c.client->read_buffer;
-        LpopCommand cmd{};
-        cmd.key = std::string{read_buffer.data() + key_token.start_pos,
-                              key_token.end_pos - key_token.start_pos + 1};
+        auto cmd = std::make_unique<LpopCommand>();
+        cmd->key = std::string{read_buffer.data() + key_token.start_pos,
+                               key_token.end_pos - key_token.start_pos + 1};
 
         total_commands--; // key consumed
 
@@ -295,16 +294,16 @@ namespace REDIS_NAMESPACE
                                            count_token.end_pos - count_token.start_pos + 1};
                 unsigned long long count_val;
                 if (convert_positive_string_to_number(count_str, count_val))
-                    cmd.count = static_cast<uint32_t>(count_val);
+                    cmd->count = static_cast<uint32_t>(count_val);
             }
         }
 
         return cmd;
     }
 
-    Command CommandParser::parseBlpopCommand(ClientContext &c, int total_commands)
+    std::unique_ptr<Command> CommandParser::parseBlpopCommand(ClientContext &c, int total_commands)
     {
-        BlpopCommand cmd{};
+        auto cmd = std::make_unique<BlpopCommand>();
         std::string_view read_buffer = c.client->read_buffer;
 
         // Parse keys (all except the last parameter which is timeout)
@@ -313,8 +312,8 @@ namespace REDIS_NAMESPACE
             ParsedToken key_token = Parser::Parse(c);
             if (key_token.type == ParsedToken::Type::BULK_STRING)
             {
-                cmd.keys.push_back(std::string{read_buffer.data() + key_token.start_pos,
-                                               key_token.end_pos - key_token.start_pos + 1});
+                cmd->keys.push_back(std::string{read_buffer.data() + key_token.start_pos,
+                                                key_token.end_pos - key_token.start_pos + 1});
             }
             total_commands--;
         }
@@ -329,11 +328,11 @@ namespace REDIS_NAMESPACE
                                         timeout_token.end_pos - timeout_token.start_pos + 1};
                 try
                 {
-                    cmd.timeout = std::stod(timeout_str);
+                    cmd->timeout = std::stod(timeout_str);
                 }
                 catch (...)
                 {
-                    cmd.timeout = 0.0;
+                    cmd->timeout = 0.0;
                 }
             }
         }
@@ -341,22 +340,22 @@ namespace REDIS_NAMESPACE
         return cmd;
     }
 
-    Command CommandParser::parseXaddCommand(ClientContext &c, int total_commands)
+    std::unique_ptr<Command> CommandParser::parseXaddCommand(ClientContext &c, int total_commands)
     {
         ParsedToken key_token = Parser::Parse(c);
         if (key_token.type != ParsedToken::Type::BULK_STRING)
-            return UnknowCommand{};
+            return std::make_unique<UnknowCommand>();
 
         ParsedToken id_token = Parser::Parse(c);
         if (id_token.type != ParsedToken::Type::BULK_STRING)
-            return UnknowCommand{};
+            return std::make_unique<UnknowCommand>();
 
         std::string_view read_buffer = c.client->read_buffer;
-        XaddCommand cmd{};
-        cmd.key = std::string{read_buffer.data() + key_token.start_pos,
-                              key_token.end_pos - key_token.start_pos + 1};
-        cmd.stream_id = std::string{read_buffer.data() + id_token.start_pos,
-                                    id_token.end_pos - id_token.start_pos + 1};
+        auto cmd = std::make_unique<XaddCommand>();
+        cmd->key = std::string{read_buffer.data() + key_token.start_pos,
+                               key_token.end_pos - key_token.start_pos + 1};
+        cmd->stream_id = std::string{read_buffer.data() + id_token.start_pos,
+                                     id_token.end_pos - id_token.start_pos + 1};
 
         total_commands -= 2; // key and id consumed
 
@@ -373,7 +372,7 @@ namespace REDIS_NAMESPACE
                                   field_token.end_pos - field_token.start_pos + 1};
                 std::string value{read_buffer.data() + value_token.start_pos,
                                   value_token.end_pos - value_token.start_pos + 1};
-                cmd.field_values.push_back({field, value});
+                cmd->field_values.push_back({field, value});
             }
             total_commands -= 2;
         }
@@ -381,40 +380,40 @@ namespace REDIS_NAMESPACE
         return cmd;
     }
 
-    Command CommandParser::parseXrangeCommand(ClientContext &c)
+    std::unique_ptr<Command> CommandParser::parseXrangeCommand(ClientContext &c)
     {
         ParsedToken key_token = Parser::Parse(c);
         if (key_token.type != ParsedToken::Type::BULK_STRING)
-            return UnknowCommand{};
+            return std::make_unique<UnknowCommand>();
 
         ParsedToken start_token = Parser::Parse(c);
         if (start_token.type != ParsedToken::Type::BULK_STRING)
-            return UnknowCommand{};
+            return std::make_unique<UnknowCommand>();
 
         ParsedToken end_token = Parser::Parse(c);
         if (end_token.type != ParsedToken::Type::BULK_STRING)
-            return UnknowCommand{};
+            return std::make_unique<UnknowCommand>();
 
         std::string_view read_buffer = c.client->read_buffer;
-        XrangeCommand cmd{};
-        cmd.key = std::string{read_buffer.data() + key_token.start_pos,
-                              key_token.end_pos - key_token.start_pos + 1};
-        cmd.start = std::string{read_buffer.data() + start_token.start_pos,
-                                start_token.end_pos - start_token.start_pos + 1};
-        cmd.end = std::string{read_buffer.data() + end_token.start_pos,
-                              end_token.end_pos - end_token.start_pos + 1};
+        auto cmd = std::make_unique<XrangeCommand>();
+        cmd->key = std::string{read_buffer.data() + key_token.start_pos,
+                               key_token.end_pos - key_token.start_pos + 1};
+        cmd->start = std::string{read_buffer.data() + start_token.start_pos,
+                                 start_token.end_pos - start_token.start_pos + 1};
+        cmd->end = std::string{read_buffer.data() + end_token.start_pos,
+                               end_token.end_pos - end_token.start_pos + 1};
         return cmd;
     }
 
-    Command CommandParser::parseXreadCommand(ClientContext &c, int total_commands)
+    std::unique_ptr<Command> CommandParser::parseXreadCommand(ClientContext &c, int total_commands)
     {
-        XreadCommand cmd{};
+        auto cmd = std::make_unique<XreadCommand>();
         std::string_view read_buffer = c.client->read_buffer;
 
         // Check for BLOCK flag
         ParsedToken first_token = Parser::Parse(c);
         if (first_token.type != ParsedToken::Type::BULK_STRING)
-            return UnknowCommand{};
+            return std::make_unique<UnknowCommand>();
 
         std::string_view first_arg{read_buffer.data() + first_token.start_pos,
                                    first_token.end_pos - first_token.start_pos + 1};
@@ -428,11 +427,11 @@ namespace REDIS_NAMESPACE
                                         timeout_token.end_pos - timeout_token.start_pos + 1};
                 try
                 {
-                    cmd.block_timeout = std::stod(timeout_str);
+                    cmd->block_timeout = std::stod(timeout_str);
                 }
                 catch (...)
                 {
-                    cmd.block_timeout = 0.0;
+                    cmd->block_timeout = 0.0;
                 }
             }
             total_commands -= 2; // BLOCK and timeout consumed
@@ -447,12 +446,12 @@ namespace REDIS_NAMESPACE
         }
         else
         {
-            return UnknowCommand{};
+            return std::make_unique<UnknowCommand>();
         }
 
         // Parse keys and IDs (split evenly)
         if (total_commands % 2 != 0)
-            return UnknowCommand{};
+            return std::make_unique<UnknowCommand>();
 
         int num_streams = total_commands / 2;
 
@@ -462,8 +461,8 @@ namespace REDIS_NAMESPACE
             ParsedToken key_token = Parser::Parse(c);
             if (key_token.type == ParsedToken::Type::BULK_STRING)
             {
-                cmd.keys.push_back(std::string{read_buffer.data() + key_token.start_pos,
-                                               key_token.end_pos - key_token.start_pos + 1});
+                cmd->keys.push_back(std::string{read_buffer.data() + key_token.start_pos,
+                                                key_token.end_pos - key_token.start_pos + 1});
             }
         }
 
@@ -473,8 +472,8 @@ namespace REDIS_NAMESPACE
             ParsedToken id_token = Parser::Parse(c);
             if (id_token.type == ParsedToken::Type::BULK_STRING)
             {
-                cmd.ids.push_back(std::string{read_buffer.data() + id_token.start_pos,
-                                              id_token.end_pos - id_token.start_pos + 1});
+                cmd->ids.push_back(std::string{read_buffer.data() + id_token.start_pos,
+                                               id_token.end_pos - id_token.start_pos + 1});
             }
         }
 
