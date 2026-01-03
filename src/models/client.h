@@ -42,6 +42,10 @@ namespace SERVER_NAMESPACE
         {
             flags |= (ClientStates::MULTI);
         }
+        bool isClientOnTransaction()
+        {
+            return flags && (ClientStates::MULTI);
+        }
         void setClientDirty()
         {
             flags |= (ClientStates::DIRTY);

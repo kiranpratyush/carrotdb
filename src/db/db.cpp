@@ -58,7 +58,10 @@ namespace REDIS_NAMESPACE
             handle_xread(c, static_cast<const XreadCommand &>(*cmd));
             break;
         case CommandType::MULTI:
-            handle_multi(c,static_cast<const MultiCommand &>(*cmd));
+            handle_multi(c, static_cast<const MultiCommand &>(*cmd));
+            break;
+        case CommandType::EXEC:
+            handle_exec(c, static_cast<const ExecCommand &>(*cmd));
             break;
         default:
             handle_ping(c);

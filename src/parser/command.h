@@ -24,7 +24,8 @@ namespace REDIS_NAMESPACE
         XREAD,
         INCR,
         UNKNOWN,
-        MULTI
+        MULTI,
+        EXEC
     };
 
     // Base command structure
@@ -160,6 +161,11 @@ namespace REDIS_NAMESPACE
     struct MultiCommand : public Command
     {
         MultiCommand() { type = CommandType::MULTI; }
+    };
+    // EXEC command
+    struct ExecCommand : public Command
+    {
+        ExecCommand() { type = CommandType::EXEC; }
     };
 
 }
