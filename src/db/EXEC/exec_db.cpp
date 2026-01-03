@@ -8,7 +8,7 @@ namespace REDIS_NAMESPACE
 
         if (clientPtr && !clientPtr->isClientOnTransaction())
         {
-            encode_error(&clientPtr->write_buffer, "ERR EXEC without MULTI");
+            encode_error(&clientPtr->write_buffer, "EXEC without MULTI");
             return;
         }
     }
