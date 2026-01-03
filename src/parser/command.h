@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <cstdint>
 #include <optional>
 
 namespace REDIS_NAMESPACE
