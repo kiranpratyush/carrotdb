@@ -23,7 +23,8 @@ namespace REDIS_NAMESPACE
         XRANGE,
         XREAD,
         INCR,
-        UNKNOWN
+        UNKNOWN,
+        MULTI
     };
 
     // Base command structure
@@ -154,6 +155,11 @@ namespace REDIS_NAMESPACE
         std::optional<double> block_timeout{}; // BLOCK flag timeout in milliseconds (0 = infinite)
         std::vector<std::string> keys{};
         std::vector<std::string> ids{}; // Can be "$" for latest
+    };
+    // MULTI command
+    struct MultiCommand : public Command
+    {
+        MultiCommand() { type = CommandType::MULTI; }
     };
 
 }

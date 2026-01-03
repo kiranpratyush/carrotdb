@@ -220,7 +220,7 @@ namespace SERVER_NAMESPACE
         epoll_event event{};
         event.events = EPOLLIN | EPOLLET;
         event.data.fd = fd;
-        // Clear the write buffer after sending
+        /*Clear the buffer after writing*/
         client->write_buffer.clear();
         client->read_buffer.clear();
         if (epoll_ctl(epoll_instance_fd, EPOLL_CTL_MOD, fd, &event) == -1)

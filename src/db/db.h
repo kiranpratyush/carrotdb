@@ -28,6 +28,8 @@ namespace REDIS_NAMESPACE
         std::unordered_map<std::string, std::chrono::steady_clock::time_point> expiration{};
         std::unordered_map<std::string, std::queue<BlockedClient>> blocked_keys{};
         std::unordered_map<std::string, std::queue<BlockedXreadClient>> blocked_xread_keys{};
+        std::unordered_map<std::string, std::vector<OngoingTransactionClient>> watching_keys{};
+        
         void handle_ping(ClientContext &context);
         void handle_echo(ClientContext &context, const EchoCommand &cmd);
         void handle_set(ClientContext &context, const SetCommand &cmd);
@@ -41,6 +43,7 @@ namespace REDIS_NAMESPACE
         void handle_xrange(ClientContext &context, const XrangeCommand &cmd);
         void handle_xread(ClientContext &context, const XreadCommand &cmd);
         void handle_incr(ClientContext &context, const IncrCommand &cmd);
+        void handle_multi(ClientContext &context, const MultiCommand &cmd);
         void signal_key_ready(const std::string &key, ClientContext &context);
         void handle_blocked_xread_clients(const std::string &key, ClientContext &context);
         void write_xread_response(std::shared_ptr<Client> &client, const std::string &key, const std::string &start_id);

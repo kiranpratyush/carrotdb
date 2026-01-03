@@ -49,7 +49,8 @@ namespace REDIS_NAMESPACE
             return parseXrangeCommand(c);
         else if (is_equal(cmd_name, "XREAD"))
             return parseXreadCommand(c, total_commands - 1);
-
+        else if (is_equal(cmd_name,"MULTI"))
+            return parseMultiCommand(c);
         return std::make_unique<UnknowCommand>();
     }
 
@@ -477,6 +478,11 @@ namespace REDIS_NAMESPACE
             }
         }
 
+        return cmd;
+    }
+    std::unique_ptr<Command> CommandParser::parseMultiCommand(ClientContext &c)
+    {
+        auto cmd = std::make_unique<MultiCommand>();
         return cmd;
     }
 }

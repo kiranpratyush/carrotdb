@@ -57,6 +57,9 @@ namespace REDIS_NAMESPACE
         case CommandType::XREAD:
             handle_xread(c, static_cast<const XreadCommand &>(*cmd));
             break;
+        case CommandType::MULTI:
+            handle_multi(c,static_cast<const MultiCommand &>(*cmd));
+            break;
         default:
             handle_ping(c);
             break;

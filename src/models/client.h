@@ -1,18 +1,31 @@
 #pragma once
 #include <string>
+#include <cstdint>
 #include <memory>
+#include <vector>
 #include <chrono>
+#include "parser/command.h"
 
 #ifndef SERVER_NAMESPACE
 #define SERVER_NAMESPACE server
 #endif
 
+using namespace REDIS_NAMESPACE;
+
 namespace SERVER_NAMESPACE
 {
+    struct ClientStates
+    {
+        const static uint64_t MULTI = (1 << 0);
+        const static uint64_t DIRTY = (1 << 1);
+    };
+
     struct Client
     {
         std::string read_buffer{};
         std::string write_buffer{};
+        uint64_t flags{};
+        std::vector<Command> queued_commands{};
 
         Client() = default;
 
@@ -20,6 +33,18 @@ namespace SERVER_NAMESPACE
         {
             read_buffer.reserve(initial_capacity);
             write_buffer.reserve(initial_capacity);
+        }
+        void resetFlags()
+        {
+            flags = 0;
+        }
+        void addTransactionFlags()
+        {
+            flags |= (ClientStates::MULTI);
+        }
+        void setClientDirty()
+        {
+            flags |= (ClientStates::DIRTY);
         }
     };
     struct ClientContext
@@ -90,5 +115,10 @@ namespace SERVER_NAMESPACE
             return timeout_at != std::chrono::steady_clock::time_point::max() && std::chrono::steady_clock::now() >= timeout_at;
         }
     };
-
+    struct OngoingTransactionClient
+    {
+        std::weak_ptr<Client> client;
+        int client_fd;
+        OngoingTransactionClient(std::weak_ptr<Client> c, int fd) : client(c), client_fd(fd) {}
+    };
 }

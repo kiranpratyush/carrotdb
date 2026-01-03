@@ -28,5 +28,6 @@ namespace REDIS_NAMESPACE
         static std::unique_ptr<Command> parseXaddCommand(ClientContext &c, int total_commands);
         static std::unique_ptr<Command> parseXrangeCommand(ClientContext &c);
         static std::unique_ptr<Command> parseXreadCommand(ClientContext &c, int total_commands);
+        static std::unique_ptr<Command> parseMultiCommand(ClientContext &c);
     };
 }
