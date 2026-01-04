@@ -74,9 +74,9 @@ namespace REDIS_NAMESPACE
         {
             if (cmd->type != CommandType::EXEC)
             {
-                c.client->queued_commands.push_back(*cmd);
+                c.client->queued_commands.push_back(std::move(cmd));
                 OngoingTransactionClient client{c.client, c.client_fd};
-                watching_keys[cmd->key].push_back(client);
+                watching_keys[c.client->queued_commands.back()->key].push_back(client);
                 encode_simple_string(&c.client->write_buffer, "QUEUED");
                 return;
             }

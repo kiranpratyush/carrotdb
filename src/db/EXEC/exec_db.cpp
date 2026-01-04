@@ -28,7 +28,7 @@ namespace REDIS_NAMESPACE
             encode_array_header(&clientPtr->write_buffer, commandCount);
             for (auto &i : clientPtr->queued_commands)
             {
-                call(context, i);
+                call(context, *i);
             }
             context.current_write_position = 0;
             clientPtr->queued_commands.clear();

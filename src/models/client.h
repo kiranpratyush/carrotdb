@@ -25,7 +25,7 @@ namespace SERVER_NAMESPACE
         std::string read_buffer{};
         std::string write_buffer{};
         uint64_t flags{};
-        std::vector<Command> queued_commands{};
+        std::vector<std::unique_ptr<Command>> queued_commands{};
 
         Client() = default;
 
