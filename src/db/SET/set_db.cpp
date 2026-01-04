@@ -24,6 +24,10 @@ namespace REDIS_NAMESPACE
         redisObj.type = RedisObjectEncodingType::STRING;
         redisObj.stringPtr = std::make_unique<std::string>(cmd.value);
         store[cmd.key] = std::move(redisObj);
+
+        // Mark all clients watching this key as dirty
+        mark_watching_clients_dirty(cmd.key);
+
         encode_simple_string(&c.client->write_buffer, "OK");
         c.current_write_position = 0;
     }

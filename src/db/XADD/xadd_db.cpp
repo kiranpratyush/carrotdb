@@ -61,6 +61,9 @@ namespace REDIS_NAMESPACE
         encode_bulk_string(&c.client->write_buffer, status.streamid);
         c.current_write_position = 0;
 
+        // Mark all clients watching this key as dirty
+        mark_watching_clients_dirty(key);
+
         // Check if there are any blocked XREAD clients waiting for this key
         handle_blocked_xread_clients(key, c);
     }

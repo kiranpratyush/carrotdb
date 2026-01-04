@@ -52,6 +52,13 @@ namespace REDIS_NAMESPACE
 
             total_count--;
         }
+
+        // Mark all clients watching this key as dirty (if we modified the list)
+        if (result.size() > 0)
+        {
+            mark_watching_clients_dirty(key);
+        }
+
         if (result.size() == 0)
         {
             encode_null_bulk_string(&c.client->write_buffer);

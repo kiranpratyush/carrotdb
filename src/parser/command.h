@@ -32,6 +32,7 @@ namespace REDIS_NAMESPACE
     struct Command
     {
         CommandType type{};
+        std::string key{};
         virtual ~Command() = default;
     };
     struct UnknowCommand : public Command
@@ -56,7 +57,6 @@ namespace REDIS_NAMESPACE
     struct SetCommand : public Command
     {
         SetCommand() { type = CommandType::SET; }
-        std::string key{};
         std::string value{};
         std::optional<uint64_t> ex{}; // Expiration in seconds
         std::optional<uint64_t> px{}; // Expiration in milliseconds
@@ -66,28 +66,24 @@ namespace REDIS_NAMESPACE
     struct GetCommand : public Command
     {
         GetCommand() { type = CommandType::GET; }
-        std::string key{};
     };
 
     // TYPE command
     struct TypeCommand : public Command
     {
         TypeCommand() { type = CommandType::TYPE; }
-        std::string key{};
     };
 
     // INCR command
     struct IncrCommand : public Command
     {
         IncrCommand() { type = CommandType::INCR; }
-        std::string key{};
     };
 
     // RPUSH command
     struct RpushCommand : public Command
     {
         RpushCommand() { type = CommandType::RPUSH; }
-        std::string key{};
         std::vector<std::string> values{};
     };
 
@@ -95,7 +91,6 @@ namespace REDIS_NAMESPACE
     struct LpushCommand : public Command
     {
         LpushCommand() { type = CommandType::LPUSH; }
-        std::string key{};
         std::vector<std::string> values{};
     };
 
@@ -103,7 +98,6 @@ namespace REDIS_NAMESPACE
     struct LrangeCommand : public Command
     {
         LrangeCommand() { type = CommandType::LRANGE; }
-        std::string key{};
         int64_t start{};
         int64_t stop{};
     };
@@ -112,14 +106,12 @@ namespace REDIS_NAMESPACE
     struct LlenCommand : public Command
     {
         LlenCommand() { type = CommandType::LLEN; }
-        std::string key{};
     };
 
     // LPOP command with optional count parameter
     struct LpopCommand : public Command
     {
         LpopCommand() { type = CommandType::LPOP; }
-        std::string key{};
         std::optional<uint32_t> count{}; // Optional count parameter
     };
 
@@ -135,7 +127,6 @@ namespace REDIS_NAMESPACE
     struct XaddCommand : public Command
     {
         XaddCommand() { type = CommandType::XADD; }
-        std::string key{};
         std::string stream_id{}; // Can be "*" for auto-generation
         std::vector<std::pair<std::string, std::string>> field_values{};
     };
@@ -144,7 +135,6 @@ namespace REDIS_NAMESPACE
     struct XrangeCommand : public Command
     {
         XrangeCommand() { type = CommandType::XRANGE; }
-        std::string key{};
         std::string start{}; // Can be "-" for minimum
         std::string end{};   // Can be "+" for maximum
     };

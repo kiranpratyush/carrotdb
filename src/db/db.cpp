@@ -6,62 +6,60 @@
 
 namespace REDIS_NAMESPACE
 {
-    void DB::execute(ClientContext &c)
+    void DB::call(ClientContext &c, Command &cmd)
     {
-        std::unique_ptr<Command> cmd = CommandParser::parseCommand(c);
-
-        switch (cmd->type)
+        switch (cmd.type)
         {
         case CommandType::PING:
             handle_ping(c);
             break;
         case CommandType::ECHO:
-            handle_echo(c, dynamic_cast<const EchoCommand &>(*cmd));
+            handle_echo(c, static_cast<const EchoCommand &>(cmd));
             break;
         case CommandType::SET:
-            handle_set(c, static_cast<const SetCommand &>(*cmd));
+            handle_set(c, static_cast<const SetCommand &>(cmd));
             break;
         case CommandType::GET:
-            handle_get_or_type(c, *cmd);
+            handle_get_or_type(c, cmd);
             break;
         case CommandType::TYPE:
-            handle_get_or_type(c, *cmd);
+            handle_get_or_type(c, cmd);
             break;
         case CommandType::INCR:
-            handle_incr(c, static_cast<const IncrCommand &>(*cmd));
+            handle_incr(c, static_cast<const IncrCommand &>(cmd));
             break;
         case CommandType::RPUSH:
-            handle_push(c, static_cast<const RpushCommand &>(*cmd));
+            handle_push(c, static_cast<const RpushCommand &>(cmd));
             break;
         case CommandType::LPUSH:
-            handle_push(c, static_cast<const LpushCommand &>(*cmd));
+            handle_push(c, static_cast<const LpushCommand &>(cmd));
             break;
         case CommandType::LRANGE:
-            handle_lrange(c, static_cast<const LrangeCommand &>(*cmd));
+            handle_lrange(c, static_cast<const LrangeCommand &>(cmd));
             break;
         case CommandType::LLEN:
-            handle_llen(c, static_cast<const LlenCommand &>(*cmd));
+            handle_llen(c, static_cast<const LlenCommand &>(cmd));
             break;
         case CommandType::LPOP:
-            handle_lpop(c, static_cast<const LpopCommand &>(*cmd));
+            handle_lpop(c, static_cast<const LpopCommand &>(cmd));
             break;
         case CommandType::BLPOP:
-            handle_blpop(c, static_cast<const BlpopCommand &>(*cmd));
+            handle_blpop(c, static_cast<const BlpopCommand &>(cmd));
             break;
         case CommandType::XADD:
-            handle_xadd(c, static_cast<const XaddCommand &>(*cmd));
+            handle_xadd(c, static_cast<const XaddCommand &>(cmd));
             break;
         case CommandType::XRANGE:
-            handle_xrange(c, static_cast<const XrangeCommand &>(*cmd));
+            handle_xrange(c, static_cast<const XrangeCommand &>(cmd));
             break;
         case CommandType::XREAD:
-            handle_xread(c, static_cast<const XreadCommand &>(*cmd));
+            handle_xread(c, static_cast<const XreadCommand &>(cmd));
             break;
         case CommandType::MULTI:
-            handle_multi(c, static_cast<const MultiCommand &>(*cmd));
+            handle_multi(c, static_cast<const MultiCommand &>(cmd));
             break;
         case CommandType::EXEC:
-            handle_exec(c, static_cast<const ExecCommand &>(*cmd));
+            handle_exec(c, static_cast<const ExecCommand &>(cmd));
             break;
         default:
             handle_ping(c);
@@ -69,10 +67,43 @@ namespace REDIS_NAMESPACE
         }
     }
 
+    void DB::execute(ClientContext &c)
+    {
+        std::unique_ptr<Command> cmd = CommandParser::parseCommand(c);
+        if (c.client->isClientOnTransaction())
+        {
+            if (cmd->type != CommandType::EXEC)
+            {
+                c.client->queued_commands.push_back(*cmd);
+                OngoingTransactionClient client{c.client, c.client_fd};
+                watching_keys[cmd->key].push_back(client);
+                encode_simple_string(&c.client->write_buffer, "QUEUED");
+                return;
+            }
+        }
+        call(c, *cmd);
+    }
+
     void DB::handle_ping(ClientContext &c)
     {
         encode_simple_string(&c.client->write_buffer, "PONG");
         c.current_write_position = 0;
+    }
+
+    void DB::mark_watching_clients_dirty(const std::string &key)
+    {
+        auto it = watching_keys.find(key);
+        if (it != watching_keys.end())
+        {
+            for (auto &watching_client : it->second)
+            {
+                auto client_ptr = watching_client.client.lock();
+                if (client_ptr)
+                {
+                    client_ptr->setClientDirty();
+                }
+            }
+        }
     }
 
     void DB::handle_echo(ClientContext &c, const EchoCommand &cmd)

@@ -123,6 +123,9 @@ namespace REDIS_NAMESPACE
             len = push_value_to_list(key_str, value_ptr, value_len, is_prepend);
         }
 
+        // Mark all clients watching this key as dirty
+        mark_watching_clients_dirty(key_str);
+
         encode_integer(&c.client->write_buffer, len);
         c.current_write_position = 0;
     }
