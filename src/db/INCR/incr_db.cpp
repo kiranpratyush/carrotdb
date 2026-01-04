@@ -41,6 +41,8 @@ namespace REDIS_NAMESPACE
             }
             if (!is_okay)
             {
+                // Restore the object back to the store since operation failed
+                store[key] = std::move(object);
                 encode_error(&c.client->write_buffer, "value is not an integer or out of range");
             }
         }
