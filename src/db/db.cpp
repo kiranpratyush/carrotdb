@@ -61,6 +61,9 @@ namespace REDIS_NAMESPACE
         case CommandType::EXEC:
             handle_exec(c, static_cast<const ExecCommand &>(cmd));
             break;
+        case CommandType::DISCARD:
+            handle_discard(c, static_cast<const DiscardCommand &>(cmd));
+            break;
         default:
             handle_ping(c);
             break;
@@ -72,7 +75,7 @@ namespace REDIS_NAMESPACE
         std::unique_ptr<Command> cmd = CommandParser::parseCommand(c);
         if (c.client->isClientOnTransaction())
         {
-            if (cmd->type != CommandType::EXEC)
+            if (cmd->type != CommandType::EXEC && cmd->type != CommandType::DISCARD)
             {
                 c.client->queued_commands.push_back(std::move(cmd));
                 OngoingTransactionClient client{c.client, c.client_fd};

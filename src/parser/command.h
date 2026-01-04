@@ -25,7 +25,8 @@ namespace REDIS_NAMESPACE
         INCR,
         UNKNOWN,
         MULTI,
-        EXEC
+        EXEC,
+        DISCARD
     };
 
     // Base command structure
@@ -156,6 +157,11 @@ namespace REDIS_NAMESPACE
     struct ExecCommand : public Command
     {
         ExecCommand() { type = CommandType::EXEC; }
+    };
+    // DISCARD command
+    struct DiscardCommand : public Command
+    {
+        DiscardCommand() { type = CommandType::DISCARD; }
     };
 
 }

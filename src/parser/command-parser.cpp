@@ -53,6 +53,8 @@ namespace REDIS_NAMESPACE
             return parseMultiCommand(c);
         else if (is_equal(cmd_name, "EXEC"))
             return parseExecCommand(c);
+        else if (is_equal(cmd_name, "DISCARD"))
+            return parseDiscardCommand(c);
         return std::make_unique<UnknowCommand>();
     }
 
@@ -490,6 +492,11 @@ namespace REDIS_NAMESPACE
     std::unique_ptr<Command> CommandParser::parseExecCommand(ClientContext &c)
     {
         auto cmd = std::make_unique<ExecCommand>();
+        return cmd;
+    }
+    std::unique_ptr<Command> CommandParser::parseDiscardCommand(ClientContext &c)
+    {
+        auto cmd = std::make_unique<DiscardCommand>();
         return cmd;
     }
 }
