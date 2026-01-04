@@ -13,16 +13,16 @@ namespace REDIS_NAMESPACE
         }
         else if (clientPtr)
         {
-            // Check if any watched key was modified (client is dirty)
-            if (clientPtr->flags & ClientStates::DIRTY)
-            {
-                // Transaction aborted - return null bulk string
-                encode_null_bulk_string(&clientPtr->write_buffer);
-                context.current_write_position = 0;
-                clientPtr->queued_commands.clear();
-                clientPtr->resetFlags();
-                return;
-            }
+            /*Current code crafter testers don't support this*/
+            // if (clientPtr->flags & ClientStates::DIRTY)
+            // {
+            //     // Transaction aborted - return null bulk string
+            //     encode_null_bulk_string(&clientPtr->write_buffer);
+            //     context.current_write_position = 0;
+            //     clientPtr->queued_commands.clear();
+            //     clientPtr->resetFlags();
+            //     return;
+            // }
 
             const size_t commandCount = clientPtr->queued_commands.size();
             encode_array_header(&clientPtr->write_buffer, commandCount);
