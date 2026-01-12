@@ -25,6 +25,8 @@ namespace SERVER_NAMESPACE
     {
         ServerRole role{ServerRole::MASTER};
         int port{6379};
+        std::string master_host{""};
+        int master_port{0};
     };
 
     class Server

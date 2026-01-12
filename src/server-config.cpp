@@ -15,12 +15,11 @@ namespace SERVER_NAMESPACE
                 return;
             }
         }
-        
+
         for (int i = 1; i < argc; i++)
         {
             if (strcmp(argv[i], "--port") == 0)
             {
-                // Check if port value is provided
                 if (i + 1 < argc)
                 {
                     int port = atoi(argv[i + 1]);
@@ -34,11 +33,34 @@ namespace SERVER_NAMESPACE
                     {
                         std::cerr << "Invalid port number: " << argv[i + 1] << std::endl;
                     }
-                    i++; // Skip the next argument since we've consumed it
+                    i++;
                 }
                 else
                 {
                     std::cerr << "--port flag requires a port number" << std::endl;
+                }
+            }
+            if (is_equal(argv[i], "--replicaof"))
+            {
+                if (i + 2 < argc)
+                {
+                    config.master_host = argv[i + 1];
+                    config.master_port = atoi(argv[i + 2]);
+                    if (config.master_port > 0 && config.master_port <= 65535)
+                    {
+                        config.role = ServerRole::SLAVE;
+                        std::cout << "Configured as slave of " << config.master_host
+                                  << ":" << config.master_port << std::endl;
+                    }
+                    else
+                    {
+                        std::cerr << "Invalid master port number: " << argv[i + 2] << std::endl;
+                    }
+                    i += 2;
+                }
+                else
+                {
+                    std::cerr << "--replicaof flag requires hostname and port" << std::endl;
                 }
             }
         }
