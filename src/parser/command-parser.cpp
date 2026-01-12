@@ -55,6 +55,8 @@ namespace REDIS_NAMESPACE
             return parseExecCommand(c);
         else if (is_equal(cmd_name, "DISCARD"))
             return parseDiscardCommand(c);
+        else if (is_equal(cmd_name, "INFO"))
+            return parseInfoCommand(c, total_commands - 1);
         return std::make_unique<UnknowCommand>();
     }
 
@@ -499,4 +501,21 @@ namespace REDIS_NAMESPACE
         auto cmd = std::make_unique<DiscardCommand>();
         return cmd;
     }
+    std::unique_ptr<Command> CommandParser::parseInfoCommand(ClientContext &c, int total_commands)
+    {
+        ParsedToken info_token = Parser::Parse(c);
+        if (info_token.type != ParsedToken::Type::BULK_STRING)
+            return std::make_unique<UnknowCommand>();
+
+        auto cmd = std::make_unique<InfoCommand>();
+        std::string_view info_section{c.client->read_buffer.data() + info_token.start_pos,
+                                      info_token.end_pos - info_token.start_pos + 1};
+        if (is_equal(info_section, "replication"))
+        {
+            cmd->isReplicationArgument = true;
+        }
+
+        return cmd;
+    }
+
 }

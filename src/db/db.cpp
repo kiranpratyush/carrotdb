@@ -1,6 +1,7 @@
 #include "db.h"
 #include "parser/command-parser.h"
-#include "../listpack.h"
+#include "listpack.h"
+#include "server.h"
 #include <algorithm>
 #include <cassert>
 
@@ -70,9 +71,26 @@ namespace REDIS_NAMESPACE
         }
     }
 
-    void DB::execute(ClientContext &c)
+    void DB::execute(ClientContext &c, SERVER_NAMESPACE::ServerConfig *serverConfig)
     {
         std::unique_ptr<Command> cmd = CommandParser::parseCommand(c);
+
+        // Handle INFO command separately
+        if (cmd->type == CommandType::INFO)
+        {
+            std::string role_info;
+            if (serverConfig->role == SERVER_NAMESPACE::ServerRole::MASTER)
+            {
+                role_info = "role:master";
+            }
+            else
+            {
+                role_info = "role:slave";
+            }
+            encode_bulk_string(&c.client->write_buffer, role_info);
+            return;
+        }
+
         if (c.client->isClientOnTransaction())
         {
             if (cmd->type != CommandType::EXEC && cmd->type != CommandType::DISCARD)

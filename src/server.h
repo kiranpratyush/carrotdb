@@ -15,6 +15,18 @@
 
 namespace SERVER_NAMESPACE
 {
+    enum class ServerRole
+    {
+        MASTER,
+        SLAVE
+    };
+
+    struct ServerConfig
+    {
+        ServerRole role{ServerRole::MASTER};
+        int port{6379};
+    };
+
     class Server
     {
     private:
@@ -26,6 +38,8 @@ namespace SERVER_NAMESPACE
         struct sockaddr_in server_addr{};
         u_int retry_count{0};
         std::unordered_map<int, std::shared_ptr<Client>> active_clients{};
+        ServerConfig config{};
+
         int make_nonblocking(int &fd);
         int handle_write(int fd);
         int handle_read(int fd);

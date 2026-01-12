@@ -124,7 +124,7 @@ namespace SERVER_NAMESPACE
             {
                 if (errno == EAGAIN || errno == EWOULDBLOCK)
                 {
-                    db.execute(client_context);
+                    db.execute(client_context, &config);
 
                     // If client is not blocked, make it ready for writing
                     if (!client_context.isBlocked)
