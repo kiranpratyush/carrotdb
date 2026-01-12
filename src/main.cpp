@@ -19,6 +19,7 @@ int main(int argc, char **argv)
   buffer.reserve(MAX_BUFFER_SIZE);
   buffer.resize(MAX_BUFFER_SIZE);
   Server s{};
+  s.initialize(argc, argv);
   if (s.setup() == 1)
   {
     return 1;

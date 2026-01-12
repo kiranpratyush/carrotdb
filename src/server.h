@@ -53,6 +53,7 @@ namespace SERVER_NAMESPACE
             }
         }
         void run(std::string &buffer, int buffer_size);
+        void initialize(int argc, char **argv);
 
     private:
     };
