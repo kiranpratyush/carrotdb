@@ -42,21 +42,48 @@ namespace SERVER_NAMESPACE
             }
             if (is_equal(argv[i], "--replicaof"))
             {
-                if (i + 2 < argc)
+                if (i + 1 < argc)
                 {
-                    config.master_host = argv[i + 1];
-                    config.master_port = atoi(argv[i + 2]);
-                    if (config.master_port > 0 && config.master_port <= 65535)
+                    std::string replica_arg = argv[i + 1];
+                    size_t space_pos = replica_arg.find(' ');
+
+                    if (space_pos != std::string::npos)
                     {
-                        config.role = ServerRole::SLAVE;
-                        std::cout << "Configured as slave of " << config.master_host
-                                  << ":" << config.master_port << std::endl;
+                        config.master_host = replica_arg.substr(0, space_pos);
+                        config.master_port = atoi(replica_arg.substr(space_pos + 1).c_str());
+
+                        if (config.master_port > 0 && config.master_port <= 65535)
+                        {
+                            config.role = ServerRole::SLAVE;
+                            std::cout << "Configured as slave of " << config.master_host
+                                      << ":" << config.master_port << std::endl;
+                        }
+                        else
+                        {
+                            std::cerr << "Invalid master port number in: " << replica_arg << std::endl;
+                        }
+                        i++;
+                    }
+                    else if (i + 2 < argc)
+                    {
+                        config.master_host = argv[i + 1];
+                        config.master_port = atoi(argv[i + 2]);
+                        if (config.master_port > 0 && config.master_port <= 65535)
+                        {
+                            config.role = ServerRole::SLAVE;
+                            std::cout << "Configured as slave of " << config.master_host
+                                      << ":" << config.master_port << std::endl;
+                        }
+                        else
+                        {
+                            std::cerr << "Invalid master port number: " << argv[i + 2] << std::endl;
+                        }
+                        i += 2;
                     }
                     else
                     {
-                        std::cerr << "Invalid master port number: " << argv[i + 2] << std::endl;
+                        std::cerr << "--replicaof flag requires hostname and port" << std::endl;
                     }
-                    i += 2;
                 }
                 else
                 {
