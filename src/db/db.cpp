@@ -79,13 +79,24 @@ namespace REDIS_NAMESPACE
         if (cmd->type == CommandType::INFO)
         {
             std::string role_info;
+            bool is_master{false};
+            std::string master_replid{};
+            std::string offset{};
             if (serverConfig->role == SERVER_NAMESPACE::ServerRole::MASTER)
             {
-                role_info = "role:master";
+                role_info = "role:master\r\n";
+                is_master = true;
+                master_replid = "master_replid:" + serverConfig->replication_id + "\r\n";
+                offset = "master_repl_offset:" + std::to_string(serverConfig->offset) + "\r\n";
             }
             else
             {
-                role_info = "role:slave";
+                role_info = "role:slave\r\n";
+            }
+            if (is_master)
+            {
+                role_info += master_replid;
+                role_info += offset;
             }
             encode_bulk_string(&c.client->write_buffer, role_info);
             return;
