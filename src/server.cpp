@@ -1,8 +1,12 @@
 #include "server.h"
+#include "networking.h"
+#include "replication.h"
 #include "utils/utils.h"
 
 namespace SERVER_NAMESPACE
 {
+    using namespace NETWORKING;
+
     int Server::make_nonblocking(int &fd)
     {
         // get the flags set on the fd
@@ -47,7 +51,17 @@ namespace SERVER_NAMESPACE
             std::cerr << "Listen failed\n";
             return 1;
         }
-
+        if (config.role == ServerRole::SLAVE)
+        {
+            bool isError = false;
+            auto client = connect_client(config.master_host, config.master_port, isError);
+            if (!isError)
+            {
+                master_client = std::move(client);
+                REPLICATION_NAMESPACE::replication_handshake(master_client.get());
+                write_client(master_client->fd, master_client.get());
+            }
+        }
         std::cout
             << "Waiting for a client to connect...\n";
         return 0;
@@ -215,8 +229,6 @@ namespace SERVER_NAMESPACE
                 std::cout << "Wrote " << size << " bytes, total: " << written << "/" << total_size << std::endl;
             }
         }
-
-        // All data written successfully, switch back to reading mode
         epoll_event event{};
         event.events = EPOLLIN | EPOLLET;
         event.data.fd = fd;

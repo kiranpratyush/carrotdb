@@ -42,6 +42,7 @@ namespace SERVER_NAMESPACE
         struct sockaddr_in server_addr{};
         u_int retry_count{0};
         std::unordered_map<int, std::shared_ptr<Client>> active_clients{};
+        std::unique_ptr<Client> master_client{};
         ServerConfig config{};
 
         int make_nonblocking(int &fd);

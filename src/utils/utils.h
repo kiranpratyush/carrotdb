@@ -177,5 +177,4 @@ namespace REDIS_NAMESPACE
             encode_bulk_string(buffer, item);
         }
     }
-
 }
