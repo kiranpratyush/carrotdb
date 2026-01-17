@@ -101,6 +101,11 @@ namespace REDIS_NAMESPACE
             encode_bulk_string(&c.client->write_buffer, role_info);
             return;
         }
+        if(cmd->type==CommandType::REPLCONF)
+        {
+            encode_simple_string(&c.client->write_buffer,"OK");
+            return;
+        }
 
         if (c.client->isClientOnTransaction())
         {

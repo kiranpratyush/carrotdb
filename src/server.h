@@ -1,6 +1,7 @@
 #pragma once
 #include <sys/types.h>
 #include <sys/epoll.h>
+#include <memory>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -10,6 +11,7 @@
 #include <errno.h>
 #include <unordered_map>
 #include "models/client.h"
+#include "replication.h"
 #include "db/db.h"
 #include "utils/utils.h"
 
@@ -20,6 +22,7 @@ namespace SERVER_NAMESPACE
         MASTER,
         SLAVE
     };
+    
 
     struct ServerConfig
     {
@@ -29,6 +32,7 @@ namespace SERVER_NAMESPACE
         int master_port{0};
         std::string replication_id{"8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb"};
         uint64_t offset{0};
+        uint8_t replicationStatus{0};
     };
 
     class Server
@@ -42,7 +46,7 @@ namespace SERVER_NAMESPACE
         struct sockaddr_in server_addr{};
         u_int retry_count{0};
         std::unordered_map<int, std::shared_ptr<Client>> active_clients{};
-        std::unique_ptr<Client> master_client{};
+        std::unique_ptr<REPLICATION_NAMESPACE::MasterClient> master_client{};
         ServerConfig config{};
 
         int make_nonblocking(int &fd);
@@ -50,7 +54,8 @@ namespace SERVER_NAMESPACE
         int handle_read(int fd);
         int handle_new_client_connection();
         void handle_expired_blocked_clients();
-
+        bool register_to_eventloop_for_read(int fd,bool is_first_time);
+        bool register_to_eventloop_for_write(int fd,bool is_first_time);
     public:
         REDIS_NAMESPACE::DB db{};
 

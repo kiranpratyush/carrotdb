@@ -53,13 +53,12 @@ namespace SERVER_NAMESPACE
         }
         if (config.role == ServerRole::SLAVE)
         {
-            bool isError = false;
-            auto client = connect_client(config.master_host, config.master_port, isError);
-            if (!isError)
+            int sockfd{};
+            auto is_success = connect_client(config.master_host, config.master_port, sockfd);
+            if (is_success)
             {
-                master_client = std::move(client);
-                REPLICATION_NAMESPACE::replication_handshake(master_client.get());
-                write_client(master_client->fd, master_client.get());
+                master_client = std::make_unique<REPLICATION_NAMESPACE::MasterClient>(MAX_BUFFER_SIZE);
+                master_client->fd = sockfd;
             }
         }
         std::cout
@@ -83,6 +82,15 @@ namespace SERVER_NAMESPACE
             perror("epoll_ctl");
             return;
         }
+        if(config.role==ServerRole::SLAVE && master_client)
+        {
+            bool status = register_to_eventloop_for_write(master_client->fd,true);
+            if(!status)
+            {
+                perror("Failed to create master client on slave mode");
+                return;
+            }
+        }
         epoll_event events[10];
         while (true)
         {
@@ -103,6 +111,21 @@ namespace SERVER_NAMESPACE
                 if (events[i].data.fd == server_fd)
                 {
                     handle_new_client_connection();
+                }
+                else if(config.role == ServerRole::SLAVE && events[i].data.fd == master_client->fd)
+                {   bool should_invert = false;
+                    bool is_read_event = events[i].events &EPOLLIN;
+                    bool is_write_event = events[i].events & EPOLLOUT;
+                    if (events[i].events & (EPOLLERR | EPOLLHUP))
+                    {
+                        close(events[i].data.fd);
+                    }
+                    master_client->handle_master(is_read_event,should_invert);
+                    if(should_invert)
+                    {
+                        if(is_read_event) register_to_eventloop_for_write(master_client->fd,false);
+                        if(is_write_event) register_to_eventloop_for_read(master_client->fd,false);
+                    }
                 }
                 else
                 {
@@ -292,5 +315,23 @@ namespace SERVER_NAMESPACE
                 perror("epoll_ctl MOD for expired client");
             }
         }
+    }
+    bool Server::register_to_eventloop_for_read(int fd,bool is_first_time)
+    {
+        epoll_event event{};
+        event.events  = EPOLLIN|EPOLLET;
+        event.data.fd  = fd;
+        auto op_type = is_first_time?EPOLL_CTL_ADD:EPOLL_CTL_MOD;
+        auto status = epoll_ctl(epoll_instance_fd,op_type,fd,&event);
+        return status==0;
+    }
+    bool Server::register_to_eventloop_for_write(int fd,bool is_first_time)
+    {
+        epoll_event event{};
+        event.events = EPOLLOUT|EPOLLET;
+        event.data.fd = fd;
+        auto op_type = is_first_time?EPOLL_CTL_ADD:EPOLL_CTL_MOD;
+        auto status = epoll_ctl(epoll_instance_fd,op_type,fd,&event);
+        return status==0;
     }
 }

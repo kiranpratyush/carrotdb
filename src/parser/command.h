@@ -27,7 +27,8 @@ namespace REDIS_NAMESPACE
         MULTI,
         EXEC,
         DISCARD,
-        INFO
+        INFO,
+        REPLCONF
     };
 
     // Base command structure
@@ -169,6 +170,14 @@ namespace REDIS_NAMESPACE
     {
         InfoCommand() { type = CommandType::INFO; }
         bool isReplicationArgument{false};
+    };
+    struct ReplConfCommand : public Command {
+        std::string listening_port;
+        std::string  capability;
+
+        ReplConfCommand() {
+            type = CommandType::REPLCONF;
+        }
     };
 
 }

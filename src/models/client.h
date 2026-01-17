@@ -19,7 +19,6 @@ namespace SERVER_NAMESPACE
         const static uint64_t MULTI = (1 << 0);
         const static uint64_t DIRTY = (1 << 1);
     };
-
     struct Client
     {
         std::string read_buffer{};

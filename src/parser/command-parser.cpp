@@ -57,6 +57,8 @@ namespace REDIS_NAMESPACE
             return parseDiscardCommand(c);
         else if (is_equal(cmd_name, "INFO"))
             return parseInfoCommand(c, total_commands - 1);
+        else if (is_equal(cmd_name, "REPLCONF"))
+            return parseReplConfCommand(c, total_commands - 1);
         return std::make_unique<UnknowCommand>();
     }
 
@@ -515,6 +517,32 @@ namespace REDIS_NAMESPACE
             cmd->isReplicationArgument = true;
         }
 
+        return cmd;
+    }
+    std::unique_ptr<Command> CommandParser::parseReplConfCommand(ClientContext &c, int total_commands)
+    {
+        ParsedToken type = Parser::Parse(c);
+        if (type.type != ParsedToken::Type::BULK_STRING)
+            return std::make_unique<UnknowCommand>();
+        auto cmd = std::make_unique<ReplConfCommand>();
+        std::string_view confType{c.client->read_buffer.data()+type.start_pos,type.end_pos-type.start_pos+1};
+        if(is_equal(confType,"listening-port"))
+        {
+            unsigned long long portInNumber{};
+            ParsedToken portToken = Parser::Parse(c);
+            std::string_view port{c.client->read_buffer.data()+portToken.start_pos,portToken.end_pos-portToken.start_pos+1};
+            bool is_success = convert_positive_string_to_number(port,portInNumber);
+            if(is_success)
+            {
+                cmd->listening_port = portInNumber;
+            }
+        }
+        else if(is_equal(confType,"capa"))
+        {
+            ParsedToken capaToken = Parser::Parse(c);
+            std::string_view capa{c.client->read_buffer.data()+capaToken.start_pos,capaToken.end_pos-capaToken.start_pos+1};
+            cmd->capability = capa;
+        }
         return cmd;
     }
 

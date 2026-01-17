@@ -102,5 +102,34 @@ namespace REDIS_NAMESPACE
         }
         return true;
     }
+    bool Parser::parse_simple_string(const std::string &raw, std::string &out)
+    {
+        size_t pos = 0;
+        /*Remove unnessary CLRF string*/
+        while (pos < raw.size() && (raw[pos] == '\r' || raw[pos] == '\n'))
+        {
+            pos++;
+        }
+        if (pos >= raw.size())
+            return false;
+        if (raw[pos] != '+')
+            return false;
+        pos++;
+        size_t startPos = pos;
+        while (pos < raw.size() && raw[pos] != '\r')
+        {
+            pos++;
+        }
+        out = raw.substr(startPos, pos-startPos);
+        if (pos < raw.size() && raw[pos] != '\r')
+            return false;
+        pos++;
+        if (pos < raw.size() && raw[pos] != '\n')
+            return false;
+        pos++;
+        if (pos > raw.size())
+            return false;
+        return true;
+    }
 
 }

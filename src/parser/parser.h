@@ -15,5 +15,6 @@ namespace REDIS_NAMESPACE
         static ParsedToken Parse(ClientContext &clientContext);
         static bool calculate_length(ClientContext &c, unsigned long &length);
         static bool parse_bulk_string_sequence(const std::string &raw, std::vector<std::string> &out);
+        static bool parse_simple_string(const std::string &raw, std::string&out);
     };
 }
