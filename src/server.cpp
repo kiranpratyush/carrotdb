@@ -57,7 +57,7 @@ namespace SERVER_NAMESPACE
             auto is_success = connect_client(config.master_host, config.master_port, sockfd);
             if (is_success)
             {
-                master_client = std::make_unique<REPLICATION_NAMESPACE::MasterClient>(config.master_port);
+                master_client = std::make_unique<REPLICATION_NAMESPACE::MasterClient>(config.port);
                 master_client->fd = sockfd;
             }
         }
