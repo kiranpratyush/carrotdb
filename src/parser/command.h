@@ -28,7 +28,8 @@ namespace REDIS_NAMESPACE
         EXEC,
         DISCARD,
         INFO,
-        REPLCONF
+        REPLCONF,
+        PSYNC
     };
 
     // Base command structure
@@ -177,6 +178,13 @@ namespace REDIS_NAMESPACE
 
         ReplConfCommand() {
             type = CommandType::REPLCONF;
+        }
+    };
+    struct PsyncCommand:public Command {
+        std::string repl_id{};
+        int64_t offset{};
+        PsyncCommand(){
+            type = CommandType::PSYNC;
         }
     };
 

@@ -106,6 +106,11 @@ namespace REDIS_NAMESPACE
             encode_simple_string(&c.client->write_buffer,"OK");
             return;
         }
+        if(cmd->type==CommandType::PSYNC)
+        {
+            encode_simple_string(&c.client->write_buffer,"FULLRESYNC 12345 0");
+            return;
+        }
 
         if (c.client->isClientOnTransaction())
         {

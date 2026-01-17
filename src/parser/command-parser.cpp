@@ -59,6 +59,8 @@ namespace REDIS_NAMESPACE
             return parseInfoCommand(c, total_commands - 1);
         else if (is_equal(cmd_name, "REPLCONF"))
             return parseReplConfCommand(c, total_commands - 1);
+        else if(is_equal(cmd_name,"PSYNC"))
+            return parsePsyncCommand(c,total_commands-1);
         return std::make_unique<UnknowCommand>();
     }
 
@@ -544,6 +546,11 @@ namespace REDIS_NAMESPACE
             cmd->capability = capa;
         }
         return cmd;
+    }
+    std::unique_ptr<Command>CommandParser::parsePsyncCommand(ClientContext &c,int total_commands)
+    {
+        auto cmd = std::make_unique<PsyncCommand>();
+        return cmd; //TODO
     }
 
 }

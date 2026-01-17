@@ -26,7 +26,7 @@ namespace REPLICATION_NAMESPACE
                 replication_status = ReplicationStatus::REPLCONF_CAPA_SUCCESS;
             }
             else if(replication_status==ReplicationStatus::PSYNC_SENT)
-            {
+            {   replication_status == ReplicationStatus::HANDSHAKE_SUCCESS;
                 is_handshake_completed = true;
             }
             read_buffer.clear();
@@ -63,7 +63,7 @@ namespace REPLICATION_NAMESPACE
                 encode_bulk_string(&write_buffer,"PSYNC");
                 encode_bulk_string(&write_buffer,repl_id);
                 encode_bulk_string(&write_buffer,std::to_string(offset));
-                replication_status == ReplicationStatus::PSYNC_SENT;
+                replication_status = ReplicationStatus::PSYNC_SENT;
             }
             NETWORKING::write_client(fd,write_buffer);
             should_invert = true;
