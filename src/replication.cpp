@@ -34,8 +34,7 @@ namespace REPLICATION_NAMESPACE
             
         }
         if (!is_read_event)
-        {
-            if (replication_status == ReplicationStatus::IDLE)
+        {if (replication_status == ReplicationStatus::IDLE)
             {
                 // send ping handshake here
                 encode_array_header(&write_buffer, 1);
