@@ -26,6 +26,7 @@ namespace REPLICATION_NAMESPACE
                 replication_status = ReplicationStatus::HANDSHAKE_SUCCESS;
                 is_handshake_completed = true;
             }
+            read_buffer.clear();
             should_invert = true;
             
         }
