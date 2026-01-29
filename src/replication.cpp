@@ -72,11 +72,42 @@ namespace REPLICATION_NAMESPACE
         while (!read_buffer.empty() && db && config)
         {
             auto client_context = ClientContext{std::shared_ptr<Client>(this, [](Client *) {}), fd};
+            
+            // First, peek at the command to check if it's REPLCONF GETACK
+            auto command = CommandParser::parseCommand(client_context);
+            size_t command_bytes = client_context.current_read_position;
+            
+            if (command->type == CommandType::REPLCONF)
+            {
+                auto* replconf_cmd = static_cast<ReplConfCommand*>(command.get());
+                if (replconf_cmd->subcommand == ReplConfType::GETACK)
+                {
+                    std::cout << "[handle_commands] Received GETACK, responding with ACK " << bytes_processed << std::endl;
+                    // Respond with REPLCONF ACK <offset>
+                    // Note: GETACK itself doesn't count towards offset
+                    encode_array_header(&write_buffer, 3);
+                    encode_bulk_string(&write_buffer, "REPLCONF");
+                    encode_bulk_string(&write_buffer, "ACK");
+                    encode_bulk_string(&write_buffer, std::to_string(bytes_processed));
+                    NETWORKING::write_client(fd, write_buffer);
+                    
+                    // Erase the consumed command and continue
+                    read_buffer.erase(0, command_bytes);
+                    continue;
+                }
+            }
+            
+            // Reset position and execute normally for other commands
+            client_context.current_read_position = 0;
             db->execute(client_context, config);
 
             // If no progress was made (nothing consumed), break to avoid infinite loop
             if (client_context.current_read_position == 0)
                 break;
+
+            // Track bytes processed for replication offset (for ACK responses)
+            bytes_processed += client_context.current_read_position;
+            std::cout << "[handle_commands] bytes_processed now=" << bytes_processed << std::endl;
 
             // Only erase the portion of the buffer that was consumed
             read_buffer.erase(0, client_context.current_read_position);

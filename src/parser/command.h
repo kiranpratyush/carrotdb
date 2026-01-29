@@ -441,10 +441,20 @@ namespace REDIS_NAMESPACE
             return "*1\r\n$4\r\nINFO\r\n";
         }
     };
+    enum class ReplConfType
+    {
+        LISTENING_PORT,
+        CAPA,
+        GETACK,  // Master asking slave for ACK
+        ACK      // Slave responding with offset
+    };
+
     struct ReplConfCommand : public Command
     {
+        ReplConfType subcommand{ReplConfType::LISTENING_PORT};
         std::string listening_port;
         std::string capability;
+        int64_t ack_offset{0};  // Used for ACK response
 
         ReplConfCommand()
         {
@@ -456,6 +466,17 @@ namespace REDIS_NAMESPACE
         }
         std::string to_resp() const override
         {
+            if (subcommand == ReplConfType::ACK)
+            {
+                std::string offset_str = std::to_string(ack_offset);
+                std::string cmd = "*3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n";
+                cmd += "$" + std::to_string(offset_str.length()) + "\r\n" + offset_str + "\r\n";
+                return cmd;
+            }
+            if (subcommand == ReplConfType::GETACK)
+            {
+                return "*3\r\n$8\r\nREPLCONF\r\n$6\r\nGETACK\r\n$1\r\n*\r\n";
+            }
             std::string cmd = "*3\r\n$8\r\nREPLCONF\r\n";
             if (!listening_port.empty())
             {

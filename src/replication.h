@@ -33,6 +33,7 @@ namespace REPLICATION_NAMESPACE
         bool is_handshake_completed{false};
         std::string repl_id{"?"};
         int64_t offset{-1};
+        int64_t bytes_processed{0};  // Track bytes received from master for ACK
         DB *db{nullptr};
         ServerConfig *config{nullptr};
         void handle_handshake(bool is_read_event, bool &should_invert);
@@ -56,6 +57,14 @@ namespace REPLICATION_NAMESPACE
         inline int64_t getOffset()
         {
             return offset;
+        }
+        inline int64_t getBytesProcessed() const
+        {
+            return bytes_processed;
+        }
+        inline void addBytesProcessed(int64_t bytes)
+        {
+            bytes_processed += bytes;
         }
         MasterClient(uint p) : port{p} {};
     };
