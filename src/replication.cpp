@@ -3,6 +3,7 @@
 #include <fstream>
 #include <vector>
 #include "parser/command-parser.h"
+#include "db/db.h"
 
 using namespace REDIS_NAMESPACE;
 
@@ -31,11 +32,44 @@ namespace
 
 namespace REPLICATION_NAMESPACE
 {
+    void MasterClient::set_db_and_config(REDIS_NAMESPACE::DB *database, ServerConfig *server_config)
+    {
+        db = database;
+        config = server_config;
+    }
+
     void MasterClient::handle_master(bool is_read_event, bool &should_invert)
     {
-
-        handle_handshake(is_read_event, should_invert);
+        if (!is_handshake_completed)
+        {
+            handle_handshake(is_read_event, should_invert);
+        }
+        else if (is_read_event)
+        {
+            // After handshake, process replicated commands from master
+            handle_commands();
+            should_invert = false;
+        }
     }
+
+    void MasterClient::handle_commands()
+    {
+        NETWORKING::read_client(fd, read_buffer);
+
+        if (read_buffer.empty())
+            return;
+
+        std::cout << "Slave received from master: " << read_buffer << std::endl;
+
+        // Parse and execute commands from master
+        if (db && config)
+        {
+            auto client_context = ClientContext{std::shared_ptr<Client>(this, [](Client *) {}), fd};
+            db->execute(client_context, config);
+            read_buffer.clear();
+        }
+    }
+
     void MasterClient::handle_handshake(bool is_read_event, bool &should_invert)
     {
         if (is_read_event)
@@ -57,7 +91,7 @@ namespace REPLICATION_NAMESPACE
             }
             else if (replication_status == ReplicationStatus::PSYNC_SENT)
             {
-                replication_status == ReplicationStatus::HANDSHAKE_SUCCESS;
+                replication_status = ReplicationStatus::HANDSHAKE_SUCCESS;
                 is_handshake_completed = true;
                 should_invert = false;
             }
@@ -151,24 +185,21 @@ namespace REPLICATION_NAMESPACE
             c.client->write_buffer.end(),
             rdb_content.begin(),
             rdb_content.end());
-        
+
+        if (rdb_content.empty())
+        {
+            std::cerr << "Warning: RDB content is empty" << std::endl;
+        }
 
         c.client->isslave = true;
         slave_clients.push_back(c.client);
         return;
-        
-        if (rdb_content.empty())
-        {
-            return;
-        }
-
-        // Mark the client as slave at this moment
-        
     }
     bool ReplicationManager::handle(ClientContext c, ServerConfig &config)
     {
         // Parse the command
         auto command = CommandParser::parseCommand(c);
+        c.current_read_position = 0;
         if (command->type == CommandType::INFO)
         {
             handle_info(c, config);
@@ -191,19 +222,19 @@ namespace REPLICATION_NAMESPACE
     {
         if (slave_clients.empty())
             return false;
+        c.current_read_position = 0;
         auto command = CommandParser::parseCommand(c);
 
-        std::cout<<command->to_resp()<<"resp"<<std::endl;
+        std::cout << command->to_resp() << "resp" << std::endl;
 
         if (command->is_write_command())
-        {   
+        {
             std::string raw_resp_command = command->to_resp();
             auto it = slave_clients.begin();
             while (it != slave_clients.end())
             {
                 if (auto slave = it->lock())
                 {
-                    // Append the pre-built string directly
                     slave->write_buffer.insert(
                         slave->write_buffer.end(),
                         raw_resp_command.begin(),

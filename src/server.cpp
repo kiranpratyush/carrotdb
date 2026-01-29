@@ -59,6 +59,7 @@ namespace SERVER_NAMESPACE
             {
                 master_client = std::make_unique<REPLICATION_NAMESPACE::MasterClient>(config.port);
                 master_client->fd = sockfd;
+                master_client->set_db_and_config(&db, &config);
             }
         }
         std::cout
@@ -164,10 +165,26 @@ namespace SERVER_NAMESPACE
             {
                 if (errno == EAGAIN || errno == EWOULDBLOCK)
                 {
+                    // Slaves may send ACKs - handle them but don't execute as commands
+                    if (client->isslave)
+                    {
+                        // For now, just log slave responses (ACKs)
+                        // In future: parse REPLCONF ACK and update slave offset
+                        if (!client->read_buffer.empty())
+                        {
+                            std::cout << "Received from slave " << fd << ": " << client->read_buffer << std::endl;
+                            client->read_buffer.clear();
+                        }
+                        // Slaves stay registered for EPOLLIN | EPOLLOUT, no need to modify
+                        return 0;
+                    }
+
                     bool status = replicationManager.handle(client_context, config);
                     if (!status)
+                    {
                         db.execute(client_context, &config);
                         notifyslaves(client_context);
+                    }
 
                     if (!client_context.isBlocked)
                     {
@@ -260,14 +277,25 @@ namespace SERVER_NAMESPACE
         event.data.fd = fd;
         /*Clear the buffer after writing*/
         client->write_buffer.clear();
-        client->read_buffer.clear();
+        // Only clear read_buffer for non-slave clients
+        if (!client->isslave)
+        {
+            client->read_buffer.clear();
+        }
         if (epoll_ctl(epoll_instance_fd, EPOLL_CTL_MOD, fd, &event) == -1)
         {
             perror("epoll_ctl MOD back to read");
             return -1;
         }
 
-        std::cout << "Response sent successfully, back to read mode" << std::endl;
+        if (client->isslave)
+        {
+            std::cout << "Slave " << fd << " back to read-only mode (waiting for ACKs)" << std::endl;
+        }
+        else
+        {
+            std::cout << "Response sent successfully, back to read mode" << std::endl;
+        }
         return 0;
     }
 
@@ -326,9 +354,9 @@ namespace SERVER_NAMESPACE
         replicationManager.for_each_active_slaves([this](std::shared_ptr<Client> slave)
                                                   {
         if (!slave->write_buffer.empty()) {
-            std::cout<<slave->fd<<"is added for input"<<slave->write_buffer<<std::endl;
+            std::cout<<slave->fd<<" is scheduled for write: "<<slave->write_buffer.size()<<" bytes"<<std::endl;
             epoll_event event{};
-            event.events = EPOLLIN | EPOLLOUT | EPOLLET;
+            event.events = EPOLLOUT | EPOLLET;
             event.data.fd = slave->fd;
             epoll_ctl(epoll_instance_fd, EPOLL_CTL_MOD, slave->fd, &event);
         } });

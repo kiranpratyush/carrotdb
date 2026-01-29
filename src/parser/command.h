@@ -156,7 +156,7 @@ namespace REDIS_NAMESPACE
         IncrCommand() { type = CommandType::INCR; }
         bool is_write_command() const override
         {
-            return false;
+            return true;
         }
         std::string to_resp() const override
         {
@@ -171,7 +171,7 @@ namespace REDIS_NAMESPACE
         std::vector<std::string> values{};
         bool is_write_command() const override
         {
-            return false;
+            return true;
         }
         std::string to_resp() const override
         {
@@ -186,7 +186,7 @@ namespace REDIS_NAMESPACE
         std::vector<std::string> values{};
         bool is_write_command() const override
         {
-            return false;
+            return true;
         }
         std::string to_resp() const override
         {
