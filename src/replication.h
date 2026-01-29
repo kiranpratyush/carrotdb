@@ -1,13 +1,15 @@
 #pragma once
 #include "models/client.h"
+#include "models/server-model.h"
 #include "utils/utils.h"
 #include "parser/parser.h"
 #include "networking.h"
 
+using namespace SERVER_NAMESPACE;
+
 namespace REPLICATION_NAMESPACE
 {
-    using namespace SERVER_NAMESPACE;
-
+    
     enum class ReplicationStatus{
         IDLE,
         PING_SENT,
@@ -46,6 +48,15 @@ namespace REPLICATION_NAMESPACE
                 return offset;
             }
             MasterClient(uint p):port{p}{};
+    };
+
+    class ReplicationManager{
+        private:
+            void handle_info(ClientContext c,ServerConfig &config);
+            void handle_replconf(ClientContext c,ServerConfig &config);
+            void handle_psync(ClientContext c,ServerConfig &config);
+        public:
+            bool handle(ClientContext c,ServerConfig &config);
     };
 
 }

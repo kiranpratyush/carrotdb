@@ -4,6 +4,7 @@
 #include "listpack.h"
 #include "parser/parser.h"
 #include "parser/command.h"
+#include "models/server-model.h"
 #include "models/client.h"
 #include "models/redisObject.h"
 #include <string>
@@ -14,17 +15,12 @@
 
 #define LIST_PACK_INITIAL_CAPACITY 20
 
-namespace SERVER_NAMESPACE
-{
-    struct ServerConfig;
-}
-
 namespace REDIS_NAMESPACE
 {
     class DB
     {
     public:
-        void execute(ClientContext &context, SERVER_NAMESPACE::ServerConfig *serverConfig = nullptr);
+        void execute(ClientContext &context, ServerConfig *serverConfig = nullptr);
         std::vector<int> check_and_expire_blocked_clients();
         int get_next_timeout_ms();
 

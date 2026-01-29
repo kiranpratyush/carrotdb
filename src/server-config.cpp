@@ -74,6 +74,7 @@ namespace SERVER_NAMESPACE
                     std::cerr << "--replicaof flag requires hostname and port" << std::endl;
                 }
             }
+            config.rdb_file_path = "temp/empty.rdb";
         }
     }
 

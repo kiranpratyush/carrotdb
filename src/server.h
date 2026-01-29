@@ -10,6 +10,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <unordered_map>
+#include "models/server-model.h"
 #include "models/client.h"
 #include "replication.h"
 #include "db/db.h"
@@ -17,24 +18,6 @@
 
 namespace SERVER_NAMESPACE
 {
-    enum class ServerRole
-    {
-        MASTER,
-        SLAVE
-    };
-    
-
-    struct ServerConfig
-    {
-        ServerRole role{ServerRole::MASTER};
-        int port{6379};
-        std::string master_host{""};
-        int master_port{0};
-        std::string replication_id{"8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb"};
-        uint64_t offset{0};
-        uint8_t replicationStatus{0};
-    };
-
     class Server
     {
     private:
@@ -48,7 +31,8 @@ namespace SERVER_NAMESPACE
         std::unordered_map<int, std::shared_ptr<Client>> active_clients{};
         std::unique_ptr<REPLICATION_NAMESPACE::MasterClient> master_client{};
         ServerConfig config{};
-
+        REPLICATION_NAMESPACE::ReplicationManager replicationManager{};
+        
         int make_nonblocking(int &fd);
         int handle_write(int fd);
         int handle_read(int fd);

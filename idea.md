@@ -1,12 +1,12 @@
-Replication handling 
-- Master client should be part of the event loop 
-- Replica status should be maintained (Is ping sent|ReplConf|last part of the handshake)
-- If we get response on the master (check the current status of replication)
-- for master -> there will be clients connected for replication 
-- for a slave -> there is a master client
+How to send continously the PSYNC response and the content in bulk string format
+- After writing the full resync 
+- load the file (for now from the disk pre configured )
+- read the file and encode it 
+- First think that how can you extract these replication logic outside of the main call method ( what should be the design)
 
-Server:
-    - Replication Clients 
-Slave : Replication client (master)
-handle_master(fd,config):
-    if()
+
+This should be part of server 
+
+- Class ReplicationManager:
+    private:
+        

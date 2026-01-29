@@ -106,7 +106,7 @@ namespace SERVER_NAMESPACE
             // Check for expired blocked clients (timeout occurred or after processing events)
             handle_expired_blocked_clients();
             for (int i = 0; i < n; i++)
-            {
+            {   
                 // If the event is from server_fd continously accept the client request
                 if (events[i].data.fd == server_fd)
                 {
@@ -160,10 +160,11 @@ namespace SERVER_NAMESPACE
             if (size == -1)
             {
                 if (errno == EAGAIN || errno == EWOULDBLOCK)
-                {
-                    db.execute(client_context, &config);
-
-                    // If client is not blocked, make it ready for writing
+                {   
+                    bool status=replicationManager.handle(client_context,config);
+                    if(!status)
+                        db.execute(client_context, &config);
+    
                     if (!client_context.isBlocked)
                     {
                         epoll_event event{};
