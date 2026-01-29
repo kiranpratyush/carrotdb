@@ -32,7 +32,7 @@ namespace SERVER_NAMESPACE
         std::unique_ptr<REPLICATION_NAMESPACE::MasterClient> master_client{};
         ServerConfig config{};
         REPLICATION_NAMESPACE::ReplicationManager replicationManager{};
-        
+
         int make_nonblocking(int &fd);
         int handle_write(int fd);
         int handle_read(int fd);
@@ -40,6 +40,7 @@ namespace SERVER_NAMESPACE
         void handle_expired_blocked_clients();
         bool register_to_eventloop_for_read(int fd,bool is_first_time);
         bool register_to_eventloop_for_write(int fd,bool is_first_time);
+        void notifyslaves(ClientContext client_context);
     public:
         REDIS_NAMESPACE::DB db{};
 
@@ -62,7 +63,5 @@ namespace SERVER_NAMESPACE
         }
         void run(std::string &buffer, int buffer_size);
         void initialize(int argc, char **argv);
-
-    private:
     };
 }

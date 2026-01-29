@@ -26,6 +26,7 @@ namespace SERVER_NAMESPACE
         uint64_t flags{};
         std::vector<std::unique_ptr<Command>> queued_commands{};
         int fd{};
+        bool isslave{};
 
         Client() = default;
 

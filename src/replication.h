@@ -1,4 +1,5 @@
 #pragma once
+#include <functional>
 #include "models/client.h"
 #include "models/server-model.h"
 #include "utils/utils.h"
@@ -52,11 +53,14 @@ namespace REPLICATION_NAMESPACE
 
     class ReplicationManager{
         private:
+            std::vector<std::weak_ptr<Client>>slave_clients;
             void handle_info(ClientContext c,ServerConfig &config);
             void handle_replconf(ClientContext c,ServerConfig &config);
             void handle_psync(ClientContext c,ServerConfig &config);
         public:
             bool handle(ClientContext c,ServerConfig &config);
+            bool handle_propagate(ClientContext c);
+            void for_each_active_slaves(std::function<void(std::shared_ptr<Client>)>action);
     };
 
 }

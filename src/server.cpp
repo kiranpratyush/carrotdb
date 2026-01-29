@@ -82,10 +82,10 @@ namespace SERVER_NAMESPACE
             perror("epoll_ctl");
             return;
         }
-        if(config.role==ServerRole::SLAVE && master_client)
+        if (config.role == ServerRole::SLAVE && master_client)
         {
-            bool status = register_to_eventloop_for_write(master_client->fd,true);
-            if(!status)
+            bool status = register_to_eventloop_for_write(master_client->fd, true);
+            if (!status)
             {
                 perror("Failed to create master client on slave mode");
                 return;
@@ -106,25 +106,28 @@ namespace SERVER_NAMESPACE
             // Check for expired blocked clients (timeout occurred or after processing events)
             handle_expired_blocked_clients();
             for (int i = 0; i < n; i++)
-            {   
+            {
                 // If the event is from server_fd continously accept the client request
                 if (events[i].data.fd == server_fd)
                 {
                     handle_new_client_connection();
                 }
-                else if(config.role == ServerRole::SLAVE && events[i].data.fd == master_client->fd)
-                {   bool should_invert = false;
-                    bool is_read_event = events[i].events &EPOLLIN;
+                else if (config.role == ServerRole::SLAVE && events[i].data.fd == master_client->fd)
+                {
+                    bool should_invert = false;
+                    bool is_read_event = events[i].events & EPOLLIN;
                     bool is_write_event = events[i].events & EPOLLOUT;
                     if (events[i].events & (EPOLLERR | EPOLLHUP))
                     {
                         close(events[i].data.fd);
                     }
-                    master_client->handle_master(is_read_event,should_invert);
-                    if(should_invert)
+                    master_client->handle_master(is_read_event, should_invert);
+                    if (should_invert)
                     {
-                        if(is_read_event) register_to_eventloop_for_write(master_client->fd,false);
-                        if(is_write_event) register_to_eventloop_for_read(master_client->fd,false);
+                        if (is_read_event)
+                            register_to_eventloop_for_write(master_client->fd, false);
+                        if (is_write_event)
+                            register_to_eventloop_for_read(master_client->fd, false);
                     }
                 }
                 else
@@ -160,11 +163,12 @@ namespace SERVER_NAMESPACE
             if (size == -1)
             {
                 if (errno == EAGAIN || errno == EWOULDBLOCK)
-                {   
-                    bool status=replicationManager.handle(client_context,config);
-                    if(!status)
+                {
+                    bool status = replicationManager.handle(client_context, config);
+                    if (!status)
                         db.execute(client_context, &config);
-    
+                        notifyslaves(client_context);
+
                     if (!client_context.isBlocked)
                     {
                         epoll_event event{};
@@ -176,8 +180,6 @@ namespace SERVER_NAMESPACE
                             return -1;
                         }
                     }
-
-                    // If any client was unblocked, make it ready for writing
                     if (client_context.unblocked_client_fd != -1)
                     {
                         epoll_event event{};
@@ -317,22 +319,37 @@ namespace SERVER_NAMESPACE
             }
         }
     }
-    bool Server::register_to_eventloop_for_read(int fd,bool is_first_time)
+
+    void Server::notifyslaves(ClientContext client_context)
     {
-        epoll_event event{};
-        event.events  = EPOLLIN|EPOLLET;
-        event.data.fd  = fd;
-        auto op_type = is_first_time?EPOLL_CTL_ADD:EPOLL_CTL_MOD;
-        auto status = epoll_ctl(epoll_instance_fd,op_type,fd,&event);
-        return status==0;
+        replicationManager.handle_propagate(client_context);
+        replicationManager.for_each_active_slaves([this](std::shared_ptr<Client> slave)
+                                                  {
+        if (!slave->write_buffer.empty()) {
+            std::cout<<slave->fd<<"is added for input"<<slave->write_buffer<<std::endl;
+            epoll_event event{};
+            event.events = EPOLLIN | EPOLLOUT | EPOLLET;
+            event.data.fd = slave->fd;
+            epoll_ctl(epoll_instance_fd, EPOLL_CTL_MOD, slave->fd, &event);
+        } });
     }
-    bool Server::register_to_eventloop_for_write(int fd,bool is_first_time)
+
+    bool Server::register_to_eventloop_for_read(int fd, bool is_first_time)
     {
         epoll_event event{};
-        event.events = EPOLLOUT|EPOLLET;
+        event.events = EPOLLIN | EPOLLET;
         event.data.fd = fd;
-        auto op_type = is_first_time?EPOLL_CTL_ADD:EPOLL_CTL_MOD;
-        auto status = epoll_ctl(epoll_instance_fd,op_type,fd,&event);
-        return status==0;
+        auto op_type = is_first_time ? EPOLL_CTL_ADD : EPOLL_CTL_MOD;
+        auto status = epoll_ctl(epoll_instance_fd, op_type, fd, &event);
+        return status == 0;
+    }
+    bool Server::register_to_eventloop_for_write(int fd, bool is_first_time)
+    {
+        epoll_event event{};
+        event.events = EPOLLOUT | EPOLLET;
+        event.data.fd = fd;
+        auto op_type = is_first_time ? EPOLL_CTL_ADD : EPOLL_CTL_MOD;
+        auto status = epoll_ctl(epoll_instance_fd, op_type, fd, &event);
+        return status == 0;
     }
 }

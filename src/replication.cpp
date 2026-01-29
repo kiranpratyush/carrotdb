@@ -19,10 +19,12 @@ namespace
         std::streamsize size = file.tellg();
         file.seekg(0, std::ios::beg);
         std::vector<char> buffer(size);
-        if (!file.read(buffer.data(), size)) {
-             std::cerr << "Error: Could not read RDB file content." << std::endl;
-             return {};
+        if (!file.read(buffer.data(), size))
+        {
+            std::cerr << "Error: Could not read RDB file content." << std::endl;
+            return {};
         }
+        file.close();
         return buffer;
     }
 }
@@ -31,10 +33,8 @@ namespace REPLICATION_NAMESPACE
 {
     void MasterClient::handle_master(bool is_read_event, bool &should_invert)
     {
-        if (!is_handshake_completed)
-        {
-            handle_handshake(is_read_event, should_invert);
-        }
+
+        handle_handshake(is_read_event, should_invert);
     }
     void MasterClient::handle_handshake(bool is_read_event, bool &should_invert)
     {
@@ -45,6 +45,8 @@ namespace REPLICATION_NAMESPACE
             bool status = Parser::parse_simple_string(read_buffer, response);
             if (!status)
                 return;
+
+            should_invert = true;
             if (replication_status == ReplicationStatus::PING_SENT && is_equal(response, "PONG"))
                 replication_status = ReplicationStatus::PING_SENT_SUCCESS;
             else if (replication_status == ReplicationStatus::REPLCONF_PORT_SENT && is_equal(response, "OK"))
@@ -57,9 +59,13 @@ namespace REPLICATION_NAMESPACE
             {
                 replication_status == ReplicationStatus::HANDSHAKE_SUCCESS;
                 is_handshake_completed = true;
+                should_invert = false;
+            }
+            else if (replication_status == ReplicationStatus::HANDSHAKE_SUCCESS)
+            {
+                should_invert = false;
             }
             read_buffer.clear();
-            should_invert = true;
         }
         if (!is_read_event)
         {
@@ -134,24 +140,30 @@ namespace REPLICATION_NAMESPACE
     {
         encode_simple_string(&c.client->write_buffer, "FULLRESYNC 12345 0");
         std::vector<char> rdb_content = read_rdb_file(config.rdb_file_path);
-        
+
         std::string length_prefix = "$" + std::to_string(rdb_content.size()) + "\r\n";
 
         c.client->write_buffer.insert(
-            c.client->write_buffer.end(), 
-            length_prefix.begin(), 
-            length_prefix.end()
-        );
+            c.client->write_buffer.end(),
+            length_prefix.begin(),
+            length_prefix.end());
         c.client->write_buffer.insert(
-            c.client->write_buffer.end(), 
-            rdb_content.begin(), 
-            rdb_content.end()
-        );
+            c.client->write_buffer.end(),
+            rdb_content.begin(),
+            rdb_content.end());
+        
 
-        if (rdb_content.empty()) {
+        c.client->isslave = true;
+        slave_clients.push_back(c.client);
+        return;
+        
+        if (rdb_content.empty())
+        {
             return;
         }
-        return;
+
+        // Mark the client as slave at this moment
+        
     }
     bool ReplicationManager::handle(ClientContext c, ServerConfig &config)
     {
@@ -174,5 +186,53 @@ namespace REPLICATION_NAMESPACE
             return true;
         }
         return false;
+    }
+    bool ReplicationManager::handle_propagate(ClientContext c)
+    {
+        if (slave_clients.empty())
+            return false;
+        auto command = CommandParser::parseCommand(c);
+
+        std::cout<<command->to_resp()<<"resp"<<std::endl;
+
+        if (command->is_write_command())
+        {   
+            std::string raw_resp_command = command->to_resp();
+            auto it = slave_clients.begin();
+            while (it != slave_clients.end())
+            {
+                if (auto slave = it->lock())
+                {
+                    // Append the pre-built string directly
+                    slave->write_buffer.insert(
+                        slave->write_buffer.end(),
+                        raw_resp_command.begin(),
+                        raw_resp_command.end());
+                    ++it;
+                }
+                else
+                {
+                    it = slave_clients.erase(it);
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+    void ReplicationManager::for_each_active_slaves(std::function<void(std::shared_ptr<Client>)> action)
+    {
+        auto it = slave_clients.begin();
+        while (it != slave_clients.end())
+        {
+            if (auto slave = it->lock())
+            {
+                action(slave);
+                ++it;
+            }
+            else
+            {
+                it = slave_clients.erase(it);
+            }
+        }
     }
 }
