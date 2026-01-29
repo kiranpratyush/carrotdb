@@ -48,7 +48,6 @@ namespace REPLICATION_NAMESPACE
         }
         else if (is_read_event)
         {
-            // After handshake, process replicated commands from master
             std::cout << "[handle_master] Calling handle_commands()" << std::endl;
             handle_commands();
             should_invert = false;
@@ -69,12 +68,18 @@ namespace REPLICATION_NAMESPACE
 
         std::cout << "Slave received from master: " << read_buffer << std::endl;
 
-        // Parse and execute commands from master
-        if (db && config)
+        /*TODO: we have to move the parsing of command inside the client_context and figure out how to handle partial command parsing*/
+        while (!read_buffer.empty() && db && config)
         {
             auto client_context = ClientContext{std::shared_ptr<Client>(this, [](Client *) {}), fd};
             db->execute(client_context, config);
-            read_buffer.clear();
+
+            // If no progress was made (nothing consumed), break to avoid infinite loop
+            if (client_context.current_read_position == 0)
+                break;
+
+            // Only erase the portion of the buffer that was consumed
+            read_buffer.erase(0, client_context.current_read_position);
         }
     }
 
