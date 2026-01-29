@@ -184,20 +184,6 @@ namespace SERVER_NAMESPACE
             {
                 if (errno == EAGAIN || errno == EWOULDBLOCK)
                 {
-                    // Slaves may send ACKs - handle them but don't execute as commands
-                    if (client->isslave)
-                    {
-                        // For now, just log slave responses (ACKs)
-                        // In future: parse REPLCONF ACK and update slave offset
-                        if (!client->read_buffer.empty())
-                        {
-                            std::cout << "Received from slave " << fd << ": " << client->read_buffer << std::endl;
-                            client->read_buffer.clear();
-                        }
-                        // Slaves stay registered for EPOLLIN | EPOLLOUT, no need to modify
-                        return 0;
-                    }
-
                     bool status = replicationManager.handle(client_context, config);
                     if (!status)
                     {
@@ -248,7 +234,6 @@ namespace SERVER_NAMESPACE
 
             if (size == 0)
             {
-                // Peer closed connection
                 std::cout << "Client closed connection" << std::endl;
                 epoll_ctl(epoll_instance_fd, EPOLL_CTL_DEL, fd, nullptr);
                 close(fd);

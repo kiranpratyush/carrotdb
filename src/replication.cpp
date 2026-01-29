@@ -31,7 +31,7 @@ namespace
 }
 
 namespace REPLICATION_NAMESPACE
-{
+{ /*This is on slave*/
     void MasterClient::set_db_and_config(REDIS_NAMESPACE::DB *database, ServerConfig *server_config)
     {
         db = database;
@@ -49,13 +49,22 @@ namespace REPLICATION_NAMESPACE
         else if (is_read_event)
         {
             std::cout << "[handle_master] Calling handle_commands()" << std::endl;
-            handle_commands();
-            should_invert = false;
+            bool needs_response = handle_commands();
+            // Only invert to write mode if we have a REPLCONF ACK to send
+            should_invert = needs_response;
+        }
+        else
+        {
+            // Write event after handshake - write buffer and go back to read mode
+            std::cout << "[handle_master] Write event, writing buffer" << std::endl;
+            NETWORKING::write_client(fd, write_buffer);
+            should_invert = true; // Register for read event
         }
     }
 
-    void MasterClient::handle_commands()
+    bool MasterClient::handle_commands()
     {
+        bool needs_response = false;
         std::cout << "[handle_commands] Reading from master fd=" << fd << std::endl;
         ssize_t bytes = NETWORKING::read_client(fd, read_buffer);
         std::cout << "[handle_commands] Read " << bytes << " bytes, buffer size=" << read_buffer.size() << std::endl;
@@ -63,7 +72,7 @@ namespace REPLICATION_NAMESPACE
         if (read_buffer.empty())
         {
             std::cout << "[handle_commands] Buffer is empty, returning" << std::endl;
-            return;
+            return false;
         }
 
         std::cout << "Slave received from master: " << read_buffer << std::endl;
@@ -72,31 +81,29 @@ namespace REPLICATION_NAMESPACE
         while (!read_buffer.empty() && db && config)
         {
             auto client_context = ClientContext{std::shared_ptr<Client>(this, [](Client *) {}), fd};
-            
+
             // First, peek at the command to check if it's REPLCONF GETACK
             auto command = CommandParser::parseCommand(client_context);
             size_t command_bytes = client_context.current_read_position;
-            
+
             if (command->type == CommandType::REPLCONF)
             {
-                auto* replconf_cmd = static_cast<ReplConfCommand*>(command.get());
+                auto *replconf_cmd = static_cast<ReplConfCommand *>(command.get());
                 if (replconf_cmd->subcommand == ReplConfType::GETACK)
                 {
                     std::cout << "[handle_commands] Received GETACK, responding with ACK " << bytes_processed << std::endl;
-                    // Respond with REPLCONF ACK <offset>
-                    // Note: GETACK itself doesn't count towards offset
                     encode_array_header(&write_buffer, 3);
                     encode_bulk_string(&write_buffer, "REPLCONF");
                     encode_bulk_string(&write_buffer, "ACK");
                     encode_bulk_string(&write_buffer, std::to_string(bytes_processed));
-                    NETWORKING::write_client(fd, write_buffer);
-                    
+
                     // Erase the consumed command and continue
                     read_buffer.erase(0, command_bytes);
+                    needs_response = true; // We need to send ACK response
                     continue;
                 }
             }
-            
+
             // Reset position and execute normally for other commands
             client_context.current_read_position = 0;
             db->execute(client_context, config);
@@ -112,6 +119,7 @@ namespace REPLICATION_NAMESPACE
             // Only erase the portion of the buffer that was consumed
             read_buffer.erase(0, client_context.current_read_position);
         }
+        return needs_response;
     }
 
     void MasterClient::handle_handshake(bool is_read_event, bool &should_invert)

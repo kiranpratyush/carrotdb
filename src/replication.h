@@ -37,7 +37,7 @@ namespace REPLICATION_NAMESPACE
         DB *db{nullptr};
         ServerConfig *config{nullptr};
         void handle_handshake(bool is_read_event, bool &should_invert);
-        void handle_commands();
+        bool handle_commands();
 
     public:
         void handle_master(bool is_read_event, bool &should_invert);
