@@ -64,7 +64,7 @@ namespace REDIS_NAMESPACE
         }
         std::string to_resp() const override
         {
-            return "";
+            return "*1\r\n$4\r\nPING\r\n";
         }
         PingCommand() { type = CommandType::PING; }
     };
@@ -80,7 +80,9 @@ namespace REDIS_NAMESPACE
         }
         std::string to_resp() const override
         {
-            return "";
+            std::string cmd = "*2\r\n$4\r\nECHO\r\n";
+            cmd += "$" + std::to_string(message.length()) + "\r\n" + message + "\r\n";
+            return cmd;
         }
     };
 
@@ -132,7 +134,9 @@ namespace REDIS_NAMESPACE
         }
         std::string to_resp() const override
         {
-            return "";
+            std::string cmd = "*2\r\n$3\r\nGET\r\n";
+            cmd += "$" + std::to_string(key.length()) + "\r\n" + key + "\r\n";
+            return cmd;
         }
     };
 
@@ -146,7 +150,9 @@ namespace REDIS_NAMESPACE
         }
         std::string to_resp() const override
         {
-            return "";
+            std::string cmd = "*2\r\n$4\r\nTYPE\r\n";
+            cmd += "$" + std::to_string(key.length()) + "\r\n" + key + "\r\n";
+            return cmd;
         }
     };
 
@@ -160,7 +166,9 @@ namespace REDIS_NAMESPACE
         }
         std::string to_resp() const override
         {
-            return "";
+            std::string cmd = "*2\r\n$4\r\nINCR\r\n";
+            cmd += "$" + std::to_string(key.length()) + "\r\n" + key + "\r\n";
+            return cmd;
         }
     };
 
@@ -175,7 +183,14 @@ namespace REDIS_NAMESPACE
         }
         std::string to_resp() const override
         {
-            return "";
+            std::string cmd = "*" + std::to_string(2 + values.size()) + "\r\n";
+            cmd += "$5\r\nRPUSH\r\n";
+            cmd += "$" + std::to_string(key.length()) + "\r\n" + key + "\r\n";
+            for (const auto &val : values)
+            {
+                cmd += "$" + std::to_string(val.length()) + "\r\n" + val + "\r\n";
+            }
+            return cmd;
         }
     };
 
@@ -190,7 +205,14 @@ namespace REDIS_NAMESPACE
         }
         std::string to_resp() const override
         {
-            return "";
+            std::string cmd = "*" + std::to_string(2 + values.size()) + "\r\n";
+            cmd += "$5\r\nLPUSH\r\n";
+            cmd += "$" + std::to_string(key.length()) + "\r\n" + key + "\r\n";
+            for (const auto &val : values)
+            {
+                cmd += "$" + std::to_string(val.length()) + "\r\n" + val + "\r\n";
+            }
+            return cmd;
         }
     };
 
@@ -206,7 +228,13 @@ namespace REDIS_NAMESPACE
         }
         std::string to_resp() const override
         {
-            return "";
+            std::string cmd = "*4\r\n$6\r\nLRANGE\r\n";
+            cmd += "$" + std::to_string(key.length()) + "\r\n" + key + "\r\n";
+            std::string start_str = std::to_string(start);
+            std::string stop_str = std::to_string(stop);
+            cmd += "$" + std::to_string(start_str.length()) + "\r\n" + start_str + "\r\n";
+            cmd += "$" + std::to_string(stop_str.length()) + "\r\n" + stop_str + "\r\n";
+            return cmd;
         }
     };
 
@@ -220,7 +248,9 @@ namespace REDIS_NAMESPACE
         }
         std::string to_resp() const override
         {
-            return "";
+            std::string cmd = "*2\r\n$4\r\nLLEN\r\n";
+            cmd += "$" + std::to_string(key.length()) + "\r\n" + key + "\r\n";
+            return cmd;
         }
     };
 
@@ -231,11 +261,19 @@ namespace REDIS_NAMESPACE
         std::optional<uint32_t> count{}; // Optional count parameter
         bool is_write_command() const override
         {
-            return false;
+            return true;
         }
         std::string to_resp() const override
         {
-            return "";
+            int arg_count = count.has_value() ? 3 : 2;
+            std::string cmd = "*" + std::to_string(arg_count) + "\r\n$4\r\nLPOP\r\n";
+            cmd += "$" + std::to_string(key.length()) + "\r\n" + key + "\r\n";
+            if (count.has_value())
+            {
+                std::string count_str = std::to_string(*count);
+                cmd += "$" + std::to_string(count_str.length()) + "\r\n" + count_str + "\r\n";
+            }
+            return cmd;
         }
     };
 
@@ -251,7 +289,15 @@ namespace REDIS_NAMESPACE
         }
         std::string to_resp() const override
         {
-            return "";
+            std::string cmd = "*" + std::to_string(1 + keys.size() + 1) + "\r\n";
+            cmd += "$5\r\nBLPOP\r\n";
+            for (const auto &k : keys)
+            {
+                cmd += "$" + std::to_string(k.length()) + "\r\n" + k + "\r\n";
+            }
+            std::string timeout_str = std::to_string(static_cast<int64_t>(timeout));
+            cmd += "$" + std::to_string(timeout_str.length()) + "\r\n" + timeout_str + "\r\n";
+            return cmd;
         }
     };
 
@@ -263,11 +309,21 @@ namespace REDIS_NAMESPACE
         std::vector<std::pair<std::string, std::string>> field_values{};
         bool is_write_command() const override
         {
-            return false;
+            return true;
         }
         std::string to_resp() const override
         {
-            return "";
+            // XADD key id field value [field value ...]
+            std::string cmd = "*" + std::to_string(3 + field_values.size() * 2) + "\r\n";
+            cmd += "$4\r\nXADD\r\n";
+            cmd += "$" + std::to_string(key.length()) + "\r\n" + key + "\r\n";
+            cmd += "$" + std::to_string(stream_id.length()) + "\r\n" + stream_id + "\r\n";
+            for (const auto &fv : field_values)
+            {
+                cmd += "$" + std::to_string(fv.first.length()) + "\r\n" + fv.first + "\r\n";
+                cmd += "$" + std::to_string(fv.second.length()) + "\r\n" + fv.second + "\r\n";
+            }
+            return cmd;
         }
     };
 
@@ -283,7 +339,11 @@ namespace REDIS_NAMESPACE
         }
         std::string to_resp() const override
         {
-            return "";
+            std::string cmd = "*4\r\n$6\r\nXRANGE\r\n";
+            cmd += "$" + std::to_string(key.length()) + "\r\n" + key + "\r\n";
+            cmd += "$" + std::to_string(start.length()) + "\r\n" + start + "\r\n";
+            cmd += "$" + std::to_string(end.length()) + "\r\n" + end + "\r\n";
+            return cmd;
         }
     };
 
@@ -300,7 +360,28 @@ namespace REDIS_NAMESPACE
         }
         std::string to_resp() const override
         {
-            return "";
+            // XREAD [BLOCK milliseconds] STREAMS key [key ...] id [id ...]
+            int arg_count = 2 + keys.size() + ids.size(); // XREAD + STREAMS + keys + ids
+            if (block_timeout.has_value())
+                arg_count += 2; // BLOCK + timeout
+            std::string cmd = "*" + std::to_string(arg_count) + "\r\n";
+            cmd += "$5\r\nXREAD\r\n";
+            if (block_timeout.has_value())
+            {
+                cmd += "$5\r\nBLOCK\r\n";
+                std::string timeout_str = std::to_string(static_cast<int64_t>(*block_timeout));
+                cmd += "$" + std::to_string(timeout_str.length()) + "\r\n" + timeout_str + "\r\n";
+            }
+            cmd += "$7\r\nSTREAMS\r\n";
+            for (const auto &k : keys)
+            {
+                cmd += "$" + std::to_string(k.length()) + "\r\n" + k + "\r\n";
+            }
+            for (const auto &id : ids)
+            {
+                cmd += "$" + std::to_string(id.length()) + "\r\n" + id + "\r\n";
+            }
+            return cmd;
         }
     };
     // MULTI command
@@ -313,7 +394,7 @@ namespace REDIS_NAMESPACE
         }
         std::string to_resp() const override
         {
-            return "";
+            return "*1\r\n$5\r\nMULTI\r\n";
         }
     };
     // EXEC command
@@ -326,7 +407,7 @@ namespace REDIS_NAMESPACE
         }
         std::string to_resp() const override
         {
-            return "";
+            return "*1\r\n$4\r\nEXEC\r\n";
         }
     };
     // DISCARD command
@@ -339,7 +420,7 @@ namespace REDIS_NAMESPACE
         }
         std::string to_resp() const override
         {
-            return "";
+            return "*1\r\n$7\r\nDISCARD\r\n";
         }
     };
     // INFO command
@@ -353,7 +434,11 @@ namespace REDIS_NAMESPACE
         }
         std::string to_resp() const override
         {
-            return "";
+            if (isReplicationArgument)
+            {
+                return "*2\r\n$4\r\nINFO\r\n$11\r\nreplication\r\n";
+            }
+            return "*1\r\n$4\r\nINFO\r\n";
         }
     };
     struct ReplConfCommand : public Command
@@ -371,7 +456,18 @@ namespace REDIS_NAMESPACE
         }
         std::string to_resp() const override
         {
-            return "";
+            std::string cmd = "*3\r\n$8\r\nREPLCONF\r\n";
+            if (!listening_port.empty())
+            {
+                cmd += "$14\r\nlistening-port\r\n";
+                cmd += "$" + std::to_string(listening_port.length()) + "\r\n" + listening_port + "\r\n";
+            }
+            else if (!capability.empty())
+            {
+                cmd += "$4\r\ncapa\r\n";
+                cmd += "$" + std::to_string(capability.length()) + "\r\n" + capability + "\r\n";
+            }
+            return cmd;
         }
     };
     struct PsyncCommand : public Command
@@ -388,7 +484,11 @@ namespace REDIS_NAMESPACE
         }
         std::string to_resp() const override
         {
-            return "";
+            std::string cmd = "*3\r\n$5\r\nPSYNC\r\n";
+            cmd += "$" + std::to_string(repl_id.length()) + "\r\n" + repl_id + "\r\n";
+            std::string offset_str = std::to_string(offset);
+            cmd += "$" + std::to_string(offset_str.length()) + "\r\n" + offset_str + "\r\n";
+            return cmd;
         }
     };
 
