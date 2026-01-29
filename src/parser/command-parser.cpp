@@ -59,8 +59,8 @@ namespace REDIS_NAMESPACE
             return parseInfoCommand(c, total_commands - 1);
         else if (is_equal(cmd_name, "REPLCONF"))
             return parseReplConfCommand(c, total_commands - 1);
-        else if(is_equal(cmd_name,"PSYNC"))
-            return parsePsyncCommand(c,total_commands-1);
+        else if (is_equal(cmd_name, "PSYNC"))
+            return parsePsyncCommand(c, total_commands - 1);
         return std::make_unique<UnknowCommand>();
     }
 
@@ -527,49 +527,49 @@ namespace REDIS_NAMESPACE
         if (type.type != ParsedToken::Type::BULK_STRING)
             return std::make_unique<UnknowCommand>();
         auto cmd = std::make_unique<ReplConfCommand>();
-        std::string_view confType{c.client->read_buffer.data()+type.start_pos,type.end_pos-type.start_pos+1};
-        if(is_equal(confType,"listening-port"))
+        std::string_view confType{c.client->read_buffer.data() + type.start_pos, type.end_pos - type.start_pos + 1};
+        if (is_equal(confType, "listening-port"))
         {
             cmd->subcommand = ReplConfType::LISTENING_PORT;
             unsigned long long portInNumber{};
             ParsedToken portToken = Parser::Parse(c);
-            std::string_view port{c.client->read_buffer.data()+portToken.start_pos,portToken.end_pos-portToken.start_pos+1};
-            bool is_success = convert_positive_string_to_number(port,portInNumber);
-            if(is_success)
+            std::string_view port{c.client->read_buffer.data() + portToken.start_pos, portToken.end_pos - portToken.start_pos + 1};
+            bool is_success = convert_positive_string_to_number(port, portInNumber);
+            if (is_success)
             {
                 cmd->listening_port = portInNumber;
             }
         }
-        else if(is_equal(confType,"capa"))
+        else if (is_equal(confType, "capa"))
         {
             cmd->subcommand = ReplConfType::CAPA;
             ParsedToken capaToken = Parser::Parse(c);
-            std::string_view capa{c.client->read_buffer.data()+capaToken.start_pos,capaToken.end_pos-capaToken.start_pos+1};
+            std::string_view capa{c.client->read_buffer.data() + capaToken.start_pos, capaToken.end_pos - capaToken.start_pos + 1};
             cmd->capability = capa;
         }
-        else if(is_equal(confType,"GETACK"))
+        else if (is_equal(confType, "GETACK"))
         {
             cmd->subcommand = ReplConfType::GETACK;
             // Parse the "*" argument (we don't really need it)
             Parser::Parse(c);
         }
-        else if(is_equal(confType,"ACK"))
+        else if (is_equal(confType, "ACK"))
         {
             cmd->subcommand = ReplConfType::ACK;
             ParsedToken offsetToken = Parser::Parse(c);
-            std::string_view offset_str{c.client->read_buffer.data()+offsetToken.start_pos,offsetToken.end_pos-offsetToken.start_pos+1};
+            std::string_view offset_str{c.client->read_buffer.data() + offsetToken.start_pos, offsetToken.end_pos - offsetToken.start_pos + 1};
             unsigned long long offset_val{};
-            if(convert_positive_string_to_number(offset_str, offset_val))
+            if (convert_positive_string_to_number(offset_str, offset_val))
             {
                 cmd->ack_offset = static_cast<int64_t>(offset_val);
             }
         }
         return cmd;
     }
-    std::unique_ptr<Command>CommandParser::parsePsyncCommand(ClientContext &c,int total_commands)
+    std::unique_ptr<Command> CommandParser::parsePsyncCommand(ClientContext &c, int total_commands)
     {
         auto cmd = std::make_unique<PsyncCommand>();
-        return cmd; //TODO
+        return cmd; // TODO
     }
 
 }

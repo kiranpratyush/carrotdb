@@ -45,6 +45,13 @@ namespace REPLICATION_NAMESPACE
         if (!is_handshake_completed)
         {
             handle_handshake(is_read_event, should_invert);
+            // After handshake completes, check if there are commands in buffer
+            if (is_handshake_completed && !read_buffer.empty())
+            {
+                std::cout << "[handle_master] Handshake done, processing remaining buffer" << std::endl;
+                bool needs_response = handle_commands();
+                should_invert = needs_response;
+            }
         }
         else if (is_read_event)
         {
@@ -145,14 +152,57 @@ namespace REPLICATION_NAMESPACE
             {
                 replication_status = ReplicationStatus::HANDSHAKE_SUCCESS;
                 is_handshake_completed = true;
+                // Find and skip the RDB file data
+                // RDB is sent as $<length>\r\n<data> (no trailing \r\n)
                 size_t rdb_start = read_buffer.find("$");
                 if (rdb_start != std::string::npos)
                 {
                     std::cout << "RDB file data received in handshake, processing..." << std::endl;
-                    // For now, just clear it - in production you'd parse and load the RDB
+                    // Parse the length after $
+                    size_t length_start = rdb_start + 1;
+                    size_t length_end = read_buffer.find("\r\n", length_start);
+                    if (length_end != std::string::npos)
+                    {
+                        std::string length_str = read_buffer.substr(length_start, length_end - length_start);
+                        unsigned long long rdb_length = 0;
+                        if (convert_positive_string_to_number(length_str, rdb_length))
+                        {
+                            // Skip past $<length>\r\n<rdb_data>
+                            size_t rdb_data_start = length_end + 2; // Skip \r\n after length
+                            size_t rdb_end = rdb_data_start + rdb_length;
+
+                            if (rdb_end <= read_buffer.size())
+                            {
+                                // There might be commands after the RDB data
+                                read_buffer.erase(0, rdb_end);
+                                std::cout << "RDB skipped, remaining buffer size: " << read_buffer.size() << std::endl;
+                                if (!read_buffer.empty())
+                                {
+                                    std::cout << "Remaining buffer: " << read_buffer << std::endl;
+                                }
+                            }
+                            else
+                            {
+                                // RDB data is incomplete or exact, clear what we have
+                                read_buffer.clear();
+                            }
+                        }
+                        else
+                        {
+                            read_buffer.clear();
+                        }
+                    }
+                    else
+                    {
+                        read_buffer.clear();
+                    }
+                }
+                else
+                {
                     read_buffer.clear();
                 }
                 should_invert = false;
+                return; // Don't clear buffer again, we've handled it
             }
             read_buffer.clear();
         }
