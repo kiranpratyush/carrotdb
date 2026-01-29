@@ -57,6 +57,8 @@ namespace SERVER_NAMESPACE
             auto is_success = connect_client(config.master_host, config.master_port, sockfd);
             if (is_success)
             {
+                // Make master socket non-blocking for edge-triggered epoll
+                make_nonblocking(sockfd);
                 master_client = std::make_unique<REPLICATION_NAMESPACE::MasterClient>(config.port);
                 master_client->fd = sockfd;
                 master_client->set_db_and_config(&db, &config);
@@ -118,17 +120,34 @@ namespace SERVER_NAMESPACE
                     bool should_invert = false;
                     bool is_read_event = events[i].events & EPOLLIN;
                     bool is_write_event = events[i].events & EPOLLOUT;
+                    std::cout << "[SLAVE] Event on master_fd: read=" << is_read_event
+                              << " write=" << is_write_event << std::endl;
                     if (events[i].events & (EPOLLERR | EPOLLHUP))
                     {
+                        std::cout << "[SLAVE] Error or hangup on master connection" << std::endl;
                         close(events[i].data.fd);
                     }
                     master_client->handle_master(is_read_event, should_invert);
+                    std::cout << "[SLAVE] After handle_master: should_invert=" << should_invert << std::endl;
                     if (should_invert)
                     {
                         if (is_read_event)
+                        {
+                            std::cout << "[SLAVE] Switching to WRITE mode" << std::endl;
                             register_to_eventloop_for_write(master_client->fd, false);
+                        }
                         if (is_write_event)
+                        {
+                            std::cout << "[SLAVE] Switching to READ mode" << std::endl;
                             register_to_eventloop_for_read(master_client->fd, false);
+                        }
+                    }
+                    else
+                    {
+                        // Even if not inverting, we need to re-register for read mode
+                        // to ensure edge-triggered epoll continues to work after handshake
+                        std::cout << "[SLAVE] Re-registering for READ mode (staying in read)" << std::endl;
+                        register_to_eventloop_for_read(master_client->fd, false);
                     }
                 }
                 else
@@ -241,6 +260,8 @@ namespace SERVER_NAMESPACE
     int Server::handle_write(int fd)
     {
         auto client = active_clients[fd];
+        std::cout << "[handle_write] fd=" << fd << " isslave=" << client->isslave
+                  << " buffer_size=" << client->write_buffer.size() << std::endl;
         size_t total_size = client->write_buffer.size();
         size_t written = 0;
 
@@ -318,7 +339,9 @@ namespace SERVER_NAMESPACE
             }
 
             make_nonblocking(client_fd);
-            active_clients.emplace(client_fd, std::make_shared<Client>(MAX_BUFFER_SIZE));
+            auto client = std::make_shared<Client>(MAX_BUFFER_SIZE);
+            client->fd = client_fd;
+            active_clients.emplace(client_fd, client);
             epoll_event client_event{};
             client_event.events = EPOLLIN | EPOLLET;
             client_event.data.fd = client_fd;
@@ -350,15 +373,25 @@ namespace SERVER_NAMESPACE
 
     void Server::notifyslaves(ClientContext client_context)
     {
-        replicationManager.handle_propagate(client_context);
+        std::cout << "[MASTER] notifyslaves called" << std::endl;
+        bool propagated = replicationManager.handle_propagate(client_context);
+        std::cout << "[MASTER] handle_propagate returned: " << propagated << std::endl;
         replicationManager.for_each_active_slaves([this](std::shared_ptr<Client> slave)
                                                   {
+        std::cout << "[MASTER] Checking slave fd=" << slave->fd 
+                  << " write_buffer size=" << slave->write_buffer.size() << std::endl;
         if (!slave->write_buffer.empty()) {
-            std::cout<<slave->fd<<" is scheduled for write: "<<slave->write_buffer.size()<<" bytes"<<std::endl;
+            std::cout << "[MASTER] Slave " << slave->fd << " is scheduled for write: " 
+                      << slave->write_buffer.size() << " bytes" << std::endl;
             epoll_event event{};
             event.events = EPOLLOUT | EPOLLET;
             event.data.fd = slave->fd;
-            epoll_ctl(epoll_instance_fd, EPOLL_CTL_MOD, slave->fd, &event);
+            int result = epoll_ctl(epoll_instance_fd, EPOLL_CTL_MOD, slave->fd, &event);
+            if (result == -1) {
+                std::cout << "[MASTER] epoll_ctl MOD FAILED, errno=" << errno << " (" << strerror(errno) << ")" << std::endl;
+            } else {
+                std::cout << "[MASTER] epoll_ctl MOD success" << std::endl;
+            }
         } });
     }
 

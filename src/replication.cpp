@@ -40,6 +40,8 @@ namespace REPLICATION_NAMESPACE
 
     void MasterClient::handle_master(bool is_read_event, bool &should_invert)
     {
+        std::cout << "[handle_master] is_read=" << is_read_event
+                  << " handshake_completed=" << is_handshake_completed << std::endl;
         if (!is_handshake_completed)
         {
             handle_handshake(is_read_event, should_invert);
@@ -47,6 +49,7 @@ namespace REPLICATION_NAMESPACE
         else if (is_read_event)
         {
             // After handshake, process replicated commands from master
+            std::cout << "[handle_master] Calling handle_commands()" << std::endl;
             handle_commands();
             should_invert = false;
         }
@@ -54,10 +57,15 @@ namespace REPLICATION_NAMESPACE
 
     void MasterClient::handle_commands()
     {
-        NETWORKING::read_client(fd, read_buffer);
+        std::cout << "[handle_commands] Reading from master fd=" << fd << std::endl;
+        ssize_t bytes = NETWORKING::read_client(fd, read_buffer);
+        std::cout << "[handle_commands] Read " << bytes << " bytes, buffer size=" << read_buffer.size() << std::endl;
 
         if (read_buffer.empty())
+        {
+            std::cout << "[handle_commands] Buffer is empty, returning" << std::endl;
             return;
+        }
 
         std::cout << "Slave received from master: " << read_buffer << std::endl;
 
@@ -93,10 +101,13 @@ namespace REPLICATION_NAMESPACE
             {
                 replication_status = ReplicationStatus::HANDSHAKE_SUCCESS;
                 is_handshake_completed = true;
-                should_invert = false;
-            }
-            else if (replication_status == ReplicationStatus::HANDSHAKE_SUCCESS)
-            {
+                size_t rdb_start = read_buffer.find("$");
+                if (rdb_start != std::string::npos)
+                {
+                    std::cout << "RDB file data received in handshake, processing..." << std::endl;
+                    // For now, just clear it - in production you'd parse and load the RDB
+                    read_buffer.clear();
+                }
                 should_invert = false;
             }
             read_buffer.clear();
@@ -220,21 +231,27 @@ namespace REPLICATION_NAMESPACE
     }
     bool ReplicationManager::handle_propagate(ClientContext c)
     {
+        std::cout << "[handle_propagate] slave_clients.size()=" << slave_clients.size() << std::endl;
         if (slave_clients.empty())
             return false;
         c.current_read_position = 0;
         auto command = CommandParser::parseCommand(c);
 
-        std::cout << command->to_resp() << "resp" << std::endl;
+        std::cout << "[handle_propagate] Command type=" << static_cast<int>(command->type)
+                  << " is_write_command=" << command->is_write_command() << std::endl;
+        std::cout << "[handle_propagate] to_resp()=" << command->to_resp() << std::endl;
 
         if (command->is_write_command())
         {
             std::string raw_resp_command = command->to_resp();
+            std::cout << "[handle_propagate] Propagating to " << slave_clients.size() << " slaves" << std::endl;
             auto it = slave_clients.begin();
             while (it != slave_clients.end())
             {
                 if (auto slave = it->lock())
                 {
+                    std::cout << "[handle_propagate] Adding " << raw_resp_command.size()
+                              << " bytes to slave fd=" << slave->fd << std::endl;
                     slave->write_buffer.insert(
                         slave->write_buffer.end(),
                         raw_resp_command.begin(),

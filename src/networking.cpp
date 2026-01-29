@@ -33,14 +33,39 @@ namespace NETWORKING
     ssize_t read_client(int sockfd, std::string &read_buffer)
     {
         char buffer[MAX_BUFFER_SIZE];
-        ssize_t bytes_read = recv(sockfd, buffer, MAX_BUFFER_SIZE, 0);
-
-        if (bytes_read > 0)
+        ssize_t total_bytes_read = 0;
+        
+        // For edge-triggered epoll, we must drain all available data
+        while (true)
         {
-            read_buffer.append(buffer, bytes_read);
+            ssize_t bytes_read = recv(sockfd, buffer, MAX_BUFFER_SIZE, 0);
+
+            if (bytes_read > 0)
+            {
+                read_buffer.append(buffer, bytes_read);
+                total_bytes_read += bytes_read;
+            }
+            else if (bytes_read == 0)
+            {
+                // Connection closed
+                return 0;
+            }
+            else // bytes_read < 0
+            {
+                if (errno == EAGAIN || errno == EWOULDBLOCK)
+                {
+                    // No more data available, we've drained the socket
+                    break;
+                }
+                else
+                {
+                    // Real error
+                    return -1;
+                }
+            }
         }
 
-        return bytes_read;
+        return total_bytes_read;
     }
 
     ssize_t write_client(int sockfd, std::string &write_buffer)
