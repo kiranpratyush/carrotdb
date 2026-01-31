@@ -2,6 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <chrono>
 #include "parser/command-parser.h"
 #include "db/db.h"
 
@@ -263,6 +264,27 @@ namespace REPLICATION_NAMESPACE
     }
     void ReplicationManager::handle_replconf(ClientContext c, ServerConfig &config)
     {
+        // Parse the command to check if it's an ACK
+        auto command = CommandParser::parseCommand(c);
+        c.current_read_position = 0; // Reset for potential re-parsing
+
+        if (command->type == CommandType::REPLCONF)
+        {
+            auto *replconf_cmd = static_cast<ReplConfCommand *>(command.get());
+            if (replconf_cmd->subcommand == ReplConfType::ACK)
+            {
+                // Store the replica's acknowledged offset
+                c.client->replica_offset = replconf_cmd->ack_offset;
+                std::cout << "[handle_replconf] Received ACK from replica fd=" << c.client_fd
+                          << " offset=" << replconf_cmd->ack_offset << std::endl;
+                
+                // Check if any blocked WAIT clients can now be unblocked
+                check_blocked_wait_clients(c);
+                
+                // No response needed for ACK
+                return;
+            }
+        }
         encode_simple_string(&c.client->write_buffer, "OK");
         return;
     }
@@ -295,22 +317,193 @@ namespace REPLICATION_NAMESPACE
 
     void ReplicationManager::handle_wait(ClientContext c, ServerConfig &config)
     {
-        uint64_t total_active_replicas = 0;
-        for(auto client:slave_clients)
+        // Parse the WAIT command to get num_replica and timeout
+        auto command = CommandParser::parseCommand(c);
+        c.current_read_position = 0;
+
+        if (command->type != CommandType::WAIT)
         {
-            if(client.lock())
+            c.client->write_buffer.append(":0\r\n");
+            return;
+        }
+
+        auto *wait_cmd = static_cast<WaitCommand *>(command.get());
+        uint64_t num_replicas_needed = wait_cmd->num_replica;
+        uint64_t timeout_ms = wait_cmd->timeout;
+
+        std::cout << "[handle_wait] num_replicas=" << num_replicas_needed
+                  << " timeout=" << timeout_ms << "ms master_offset=" << config.offset << std::endl;
+
+        // If no writes have been propagated, return current replica count immediately
+        if (config.offset == 0)
+        {
+            uint64_t total_active_replicas = 0;
+            for (auto &client : slave_clients)
             {
-                total_active_replicas+=1;
+                if (client.lock())
+                {
+                    total_active_replicas += 1;
+                }
+            }
+            std::cout << "[handle_wait] No writes propagated, returning " << total_active_replicas << std::endl;
+            c.client->write_buffer.append(":" + std::to_string(total_active_replicas) + "\r\n");
+            return;
+        }
+
+        // Check if we already have enough replicas that have caught up
+        uint64_t already_acked = 0;
+        for (auto &weak_slave : slave_clients)
+        {
+            if (auto slave = weak_slave.lock())
+            {
+                if (slave->replica_offset >= static_cast<int64_t>(config.offset))
+                {
+                    already_acked++;
+                }
             }
         }
-        c.client->write_buffer.append(":"+std::to_string(total_active_replicas)+"\r\n");
-        return;
+        
+        if (already_acked >= num_replicas_needed)
+        {
+            std::cout << "[handle_wait] Already have " << already_acked << " replicas caught up" << std::endl;
+            c.client->write_buffer.append(":" + std::to_string(already_acked) + "\r\n");
+            return;
+        }
+
+        // Send REPLCONF GETACK * to all replicas (put in their write_buffer)
+        std::string getack_cmd = "*3\r\n$8\r\nREPLCONF\r\n$6\r\nGETACK\r\n$1\r\n*\r\n";
+
+        for (auto &weak_slave : slave_clients)
+        {
+            if (auto slave = weak_slave.lock())
+            {
+                slave->write_buffer.insert(
+                    slave->write_buffer.end(),
+                    getack_cmd.begin(),
+                    getack_cmd.end());
+                std::cout << "[handle_wait] Queued GETACK to slave fd=" << slave->fd << std::endl;
+            }
+        }
+
+        // Block the client and wait for ACKs
+        c.isBlocked = true;
+        blocked_wait_clients.emplace_back(
+            c.client, c.client_fd, timeout_ms, num_replicas_needed, static_cast<int64_t>(config.offset));
+        std::cout << "[handle_wait] Client blocked, waiting for " << num_replicas_needed << " replicas" << std::endl;
     }
 
+    void ReplicationManager::check_blocked_wait_clients(ClientContext &c)
+    {
+        if (blocked_wait_clients.empty())
+            return;
 
+        auto it = blocked_wait_clients.begin();
+        while (it != blocked_wait_clients.end())
+        {
+            auto blocked_client = it->client.lock();
+            if (!blocked_client)
+            {
+                it = blocked_wait_clients.erase(it);
+                continue;
+            }
 
+            // Count how many replicas have caught up to the required offset
+            uint64_t acked_replicas = 0;
+            for (auto &weak_slave : slave_clients)
+            {
+                if (auto slave = weak_slave.lock())
+                {
+                    if (slave->replica_offset >= it->master_offset)
+                    {
+                        acked_replicas++;
+                    }
+                }
+            }
 
+            std::cout << "[check_blocked_wait] acked=" << acked_replicas 
+                      << " needed=" << it->num_replicas_needed << std::endl;
 
+            if (acked_replicas >= it->num_replicas_needed)
+            {
+                // Unblock the client with success
+                blocked_client->write_buffer.append(":" + std::to_string(acked_replicas) + "\r\n");
+                c.unblocked_client_fd = it->client_fd;
+                std::cout << "[check_blocked_wait] Unblocking client fd=" << it->client_fd 
+                          << " with " << acked_replicas << " replicas" << std::endl;
+                it = blocked_wait_clients.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+    }
+
+    std::vector<int> ReplicationManager::check_and_expire_blocked_wait_clients()
+    {
+        std::vector<int> expired_fds;
+
+        auto it = blocked_wait_clients.begin();
+        while (it != blocked_wait_clients.end())
+        {
+            if (it->is_expired())
+            {
+                auto blocked_client = it->client.lock();
+                if (blocked_client)
+                {
+                    // Count current acked replicas for timeout response
+                    uint64_t acked_replicas = 0;
+                    for (auto &weak_slave : slave_clients)
+                    {
+                        if (auto slave = weak_slave.lock())
+                        {
+                            if (slave->replica_offset >= it->master_offset)
+                            {
+                                acked_replicas++;
+                            }
+                        }
+                    }
+                    blocked_client->write_buffer.append(":" + std::to_string(acked_replicas) + "\r\n");
+                    expired_fds.push_back(it->client_fd);
+                    std::cout << "[expire_blocked_wait] Timeout for client fd=" << it->client_fd 
+                              << " returning " << acked_replicas << " replicas" << std::endl;
+                }
+                it = blocked_wait_clients.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+
+        return expired_fds;
+    }
+
+    int ReplicationManager::get_next_wait_timeout_ms()
+    {
+        if (blocked_wait_clients.empty())
+            return -1;
+
+        auto now = std::chrono::steady_clock::now();
+        int min_timeout = -1;
+
+        for (const auto &blocked : blocked_wait_clients)
+        {
+            if (blocked.timeout_at == std::chrono::steady_clock::time_point::max())
+                continue;
+
+            auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
+                blocked.timeout_at - now).count();
+            
+            if (remaining <= 0)
+                return 0; // Already expired
+            
+            if (min_timeout == -1 || remaining < min_timeout)
+                min_timeout = static_cast<int>(remaining);
+        }
+
+        return min_timeout;
+    }
 
     /*TODO: Add better command parsing logic */
     bool ReplicationManager::handle(ClientContext c, ServerConfig &config)
@@ -334,14 +527,14 @@ namespace REPLICATION_NAMESPACE
             handle_psync(c, config);
             return true;
         }
-        if(command->type == CommandType::WAIT)
+        if (command->type == CommandType::WAIT)
         {
-            handle_wait(c,config);
+            handle_wait(c, config);
             return true;
         }
         return false;
     }
-    bool ReplicationManager::handle_propagate(ClientContext c)
+    bool ReplicationManager::handle_propagate(ClientContext c, ServerConfig &config)
     {
         std::cout << "[handle_propagate] slave_clients.size()=" << slave_clients.size() << std::endl;
         if (slave_clients.empty())
@@ -356,6 +549,9 @@ namespace REPLICATION_NAMESPACE
         if (command->is_write_command())
         {
             std::string raw_resp_command = command->to_resp();
+            // Track bytes sent for WAIT command
+            config.offset += raw_resp_command.size();
+            std::cout << "[handle_propagate] Master offset now=" << config.offset << std::endl;
             std::cout << "[handle_propagate] Propagating to " << slave_clients.size() << " slaves" << std::endl;
             auto it = slave_clients.begin();
             while (it != slave_clients.end())

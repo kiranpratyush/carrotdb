@@ -99,6 +99,17 @@ namespace SERVER_NAMESPACE
         {
             // Get the timeout for the next blocked client to expire
             int timeout_ms = db.get_next_timeout_ms();
+            int wait_timeout_ms = replicationManager.get_next_wait_timeout_ms();
+
+            // Use the smaller of the two timeouts (if both are valid)
+            if (wait_timeout_ms >= 0)
+            {
+                if (timeout_ms < 0)
+                    timeout_ms = wait_timeout_ms;
+                else
+                    timeout_ms = std::min(timeout_ms, wait_timeout_ms);
+            }
+
             int n = epoll_wait(epoll_instance_fd, events, 10, timeout_ms);
             if (n == -1)
             {
@@ -188,8 +199,9 @@ namespace SERVER_NAMESPACE
                     if (!status)
                     {
                         db.execute(client_context, &config);
-                        notifyslaves(client_context);
                     }
+                    // Always notify slaves - they may have GETACK or propagated commands to send
+                    notifyslaves(client_context);
 
                     if (!client_context.isBlocked)
                     {
@@ -354,12 +366,26 @@ namespace SERVER_NAMESPACE
                 perror("epoll_ctl MOD for expired client");
             }
         }
+
+        // Also check for expired WAIT clients
+        std::vector<int> expired_wait_fds = replicationManager.check_and_expire_blocked_wait_clients();
+
+        for (int fd : expired_wait_fds)
+        {
+            epoll_event event{};
+            event.events = EPOLLOUT | EPOLLET;
+            event.data.fd = fd;
+            if (epoll_ctl(epoll_instance_fd, EPOLL_CTL_MOD, fd, &event) == -1)
+            {
+                perror("epoll_ctl MOD for expired wait client");
+            }
+        }
     }
 
     void Server::notifyslaves(ClientContext client_context)
     {
         std::cout << "[MASTER] notifyslaves called" << std::endl;
-        bool propagated = replicationManager.handle_propagate(client_context);
+        bool propagated = replicationManager.handle_propagate(client_context, config);
         std::cout << "[MASTER] handle_propagate returned: " << propagated << std::endl;
         replicationManager.for_each_active_slaves([this](std::shared_ptr<Client> slave)
                                                   {

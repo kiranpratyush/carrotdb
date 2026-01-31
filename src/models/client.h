@@ -27,6 +27,7 @@ namespace SERVER_NAMESPACE
         std::vector<std::unique_ptr<Command>> queued_commands{};
         int fd{};
         bool isslave{};
+        int64_t replica_offset{0}; // Track replica's acknowledged offset (for slaves)
 
         Client() = default;
 
@@ -125,5 +126,34 @@ namespace SERVER_NAMESPACE
         std::weak_ptr<Client> client;
         int client_fd;
         OngoingTransactionClient(std::weak_ptr<Client> c, int fd) : client(c), client_fd(fd) {}
+    };
+
+    struct BlockedWaitClient
+    {
+        std::weak_ptr<Client> client;
+        int client_fd;
+        std::chrono::steady_clock::time_point timeout_at;
+        uint64_t num_replicas_needed;
+        int64_t master_offset; // The offset that replicas need to reach
+
+        BlockedWaitClient(std::weak_ptr<Client> c, int fd, uint64_t timeout_ms, uint64_t num_replicas, int64_t offset)
+            : client(c), client_fd(fd), num_replicas_needed(num_replicas), master_offset(offset)
+        {
+            if (timeout_ms == 0)
+            {
+                timeout_at = std::chrono::steady_clock::time_point::max();
+            }
+            else
+            {
+                auto timeoutMs = std::chrono::milliseconds(static_cast<long long>(timeout_ms));
+                timeout_at = std::chrono::steady_clock::now() + timeoutMs;
+            }
+        }
+
+        bool is_expired() const
+        {
+            return timeout_at != std::chrono::steady_clock::time_point::max() &&
+                   std::chrono::steady_clock::now() >= timeout_at;
+        }
     };
 }
