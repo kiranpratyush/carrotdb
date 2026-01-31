@@ -95,7 +95,8 @@ namespace REPLICATION_NAMESPACE
                 if (replconf_cmd->subcommand == ReplConfType::GETACK)
                 {
                     std::cout << "[handle_commands] Received GETACK, responding with ACK " << bytes_processed << std::endl;
-
+                    // TODO , temporarily cleaning up write buffer,need to figure out better approach
+                    write_buffer.clear();
                     encode_array_header(&write_buffer, 3);
                     encode_bulk_string(&write_buffer, "REPLCONF");
                     encode_bulk_string(&write_buffer, "ACK");
