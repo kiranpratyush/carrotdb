@@ -8,3 +8,9 @@ How to Implement Wait with blocking
 
 #TODO
 - Move the command parsing outside of each handle , remove the dependency of current read /write position
+
+
+
+
+#Current resource I am studying to refactor the current implementation
+# next implement the acceptor connection type which will only have the handle_read ( on new connection call back)
