@@ -57,15 +57,13 @@ namespace REPLICATION_NAMESPACE
         {
             std::cout << "[handle_master] Calling handle_commands()" << std::endl;
             bool needs_response = handle_commands();
-            // Only invert to write mode if we have a REPLCONF ACK to send
             should_invert = needs_response;
         }
         else
         {
-            // Write event after handshake - write buffer and go back to read mode
             std::cout << "[handle_master] Write event, writing buffer" << std::endl;
             NETWORKING::write_client(fd, write_buffer);
-            should_invert = true; // Register for read event
+            should_invert = true;
         }
     }
 
@@ -88,8 +86,6 @@ namespace REPLICATION_NAMESPACE
         while (!read_buffer.empty() && db && config)
         {
             auto client_context = ClientContext{std::shared_ptr<Client>(this, [](Client *) {}), fd};
-
-            // First, peek at the command to check if it's REPLCONF GETACK
             auto command = CommandParser::parseCommand(client_context);
             size_t command_bytes = client_context.current_read_position;
 
@@ -99,31 +95,26 @@ namespace REPLICATION_NAMESPACE
                 if (replconf_cmd->subcommand == ReplConfType::GETACK)
                 {
                     std::cout << "[handle_commands] Received GETACK, responding with ACK " << bytes_processed << std::endl;
+
                     encode_array_header(&write_buffer, 3);
                     encode_bulk_string(&write_buffer, "REPLCONF");
                     encode_bulk_string(&write_buffer, "ACK");
                     encode_bulk_string(&write_buffer, std::to_string(bytes_processed));
 
-                    // Erase the consumed command and continue
+                    bytes_processed += client_context.current_read_position;
                     read_buffer.erase(0, command_bytes);
-                    needs_response = true; // We need to send ACK response
+                    needs_response = true;
                     continue;
                 }
             }
-
-            // Reset position and execute normally for other commands
             client_context.current_read_position = 0;
             db->execute(client_context, config);
-
-            // If no progress was made (nothing consumed), break to avoid infinite loop
-            if (client_context.current_read_position == 0)
-                break;
-
-            // Track bytes processed for replication offset (for ACK responses)
             bytes_processed += client_context.current_read_position;
             std::cout << "[handle_commands] bytes_processed now=" << bytes_processed << std::endl;
 
-            // Only erase the portion of the buffer that was consumed
+            if (client_context.current_read_position == 0)
+                break;
+
             read_buffer.erase(0, client_context.current_read_position);
         }
         return needs_response;
@@ -202,7 +193,7 @@ namespace REPLICATION_NAMESPACE
                     read_buffer.clear();
                 }
                 should_invert = false;
-                return; // Don't clear buffer again, we've handled it
+                return;
             }
             read_buffer.clear();
         }
@@ -335,7 +326,7 @@ namespace REPLICATION_NAMESPACE
                   << " is_write_command=" << command->is_write_command() << std::endl;
         std::cout << "[handle_propagate] to_resp()=" << command->to_resp() << std::endl;
 
-        if (command->is_write_command())
+        if (command->is_write_command() || command->type == CommandType::PING)
         {
             std::string raw_resp_command = command->to_resp();
             std::cout << "[handle_propagate] Propagating to " << slave_clients.size() << " slaves" << std::endl;
@@ -359,6 +350,7 @@ namespace REPLICATION_NAMESPACE
             }
             return true;
         }
+
         return false;
     }
     void ReplicationManager::for_each_active_slaves(std::function<void(std::shared_ptr<Client>)> action)
