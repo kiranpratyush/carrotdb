@@ -445,8 +445,8 @@ namespace REDIS_NAMESPACE
     {
         LISTENING_PORT,
         CAPA,
-        GETACK,  // Master asking slave for ACK
-        ACK      // Slave responding with offset
+        GETACK, // Master asking slave for ACK
+        ACK     // Slave responding with offset
     };
 
     struct ReplConfCommand : public Command
@@ -454,7 +454,7 @@ namespace REDIS_NAMESPACE
         ReplConfType subcommand{ReplConfType::LISTENING_PORT};
         std::string listening_port;
         std::string capability;
-        int64_t ack_offset{0};  // Used for ACK response
+        int64_t ack_offset{0}; // Used for ACK response
 
         ReplConfCommand()
         {

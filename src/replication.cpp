@@ -327,7 +327,7 @@ namespace REPLICATION_NAMESPACE
                   << " is_write_command=" << command->is_write_command() << std::endl;
         std::cout << "[handle_propagate] to_resp()=" << command->to_resp() << std::endl;
 
-        if (command->is_write_command() || command->type == CommandType::PING)
+        if (command->is_write_command())
         {
             std::string raw_resp_command = command->to_resp();
             std::cout << "[handle_propagate] Propagating to " << slave_clients.size() << " slaves" << std::endl;
