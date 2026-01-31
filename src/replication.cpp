@@ -292,6 +292,27 @@ namespace REPLICATION_NAMESPACE
         slave_clients.push_back(c.client);
         return;
     }
+
+    void ReplicationManager::handle_wait(ClientContext c, ServerConfig &config)
+    {
+        uint64_t total_active_replicas = 0;
+        for(auto client:slave_clients)
+        {
+            if(client.lock())
+            {
+                total_active_replicas+=1;
+            }
+        }
+        c.client->write_buffer.append(":"+std::to_string(total_active_replicas)+"\r\n");
+        return;
+    }
+
+
+
+
+
+
+    /*TODO: Add better command parsing logic */
     bool ReplicationManager::handle(ClientContext c, ServerConfig &config)
     {
         // Parse the command
@@ -311,6 +332,11 @@ namespace REPLICATION_NAMESPACE
         if (command->type == CommandType::PSYNC)
         {
             handle_psync(c, config);
+            return true;
+        }
+        if(command->type == CommandType::WAIT)
+        {
+            handle_wait(c,config);
             return true;
         }
         return false;

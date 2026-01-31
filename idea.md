@@ -1,12 +1,10 @@
-How to send continously the PSYNC response and the content in bulk string format
-- After writing the full resync 
-- load the file (for now from the disk pre configured )
-- read the file and encode it 
-- First think that how can you extract these replication logic outside of the main call method ( what should be the design)
+How to Implement Wait with blocking
+- We have Replication Manager which handles all the replication mechanism
+- will add blockedReplication client vectors to it as weak ptrs
+- Add the next timeout to get the minimum timeout the epoll should wait
+- add handle_wait method in the replication manager (for now write 0 in the write buffer of the client)
 
 
-This should be part of server 
 
-- Class ReplicationManager:
-    private:
-        
+#TODO
+- Move the command parsing outside of each handle , remove the dependency of current read /write position

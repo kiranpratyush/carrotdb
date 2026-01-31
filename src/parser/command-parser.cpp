@@ -61,6 +61,8 @@ namespace REDIS_NAMESPACE
             return parseReplConfCommand(c, total_commands - 1);
         else if (is_equal(cmd_name, "PSYNC"))
             return parsePsyncCommand(c, total_commands - 1);
+        else if (is_equal(cmd_name, "WAIT"))
+            return parseWaitCommand(c, total_commands - 1);
         return std::make_unique<UnknowCommand>();
     }
 
@@ -570,6 +572,20 @@ namespace REDIS_NAMESPACE
     {
         auto cmd = std::make_unique<PsyncCommand>();
         return cmd; // TODO
+    }
+
+    std::unique_ptr<Command> CommandParser::parseWaitCommand(ClientContext &c, int total_commands)
+    {
+        ParsedToken num_replica_token = Parser::Parse(c);
+        if (num_replica_token.type != ParsedToken::Type::BULK_STRING)
+            return std::make_unique<UnknowCommand>();
+        std::string_view num_replica{c.client->read_buffer.data() + num_replica_token.start_pos, num_replica_token.end_pos - num_replica_token.start_pos + 1};
+        auto cmd = std::make_unique<WaitCommand>();
+        convert_positive_string_to_number(num_replica, cmd->num_replica);
+        ParsedToken timeout_token = Parser::Parse(c);
+        std::string_view timeout_ms_in_string{c.client->read_buffer.data() + timeout_token.start_pos, timeout_token.end_pos - timeout_token.start_pos + 1};
+        convert_positive_string_to_number(timeout_ms_in_string, cmd->timeout);
+        return cmd;
     }
 
 }

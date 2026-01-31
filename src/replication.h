@@ -76,6 +76,7 @@ namespace REPLICATION_NAMESPACE
         void handle_info(ClientContext c, ServerConfig &config);
         void handle_replconf(ClientContext c, ServerConfig &config);
         void handle_psync(ClientContext c, ServerConfig &config);
+        void handle_wait(ClientContext c, ServerConfig &config);
 
     public:
         bool handle(ClientContext c, ServerConfig &config);

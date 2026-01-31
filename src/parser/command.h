@@ -29,7 +29,8 @@ namespace REDIS_NAMESPACE
         DISCARD,
         INFO,
         REPLCONF,
-        PSYNC
+        PSYNC,
+        WAIT
     };
 
     // Base command structure
@@ -509,6 +510,24 @@ namespace REDIS_NAMESPACE
             cmd += "$" + std::to_string(repl_id.length()) + "\r\n" + repl_id + "\r\n";
             std::string offset_str = std::to_string(offset);
             cmd += "$" + std::to_string(offset_str.length()) + "\r\n" + offset_str + "\r\n";
+            return cmd;
+        }
+    };
+    struct WaitCommand: public Command {
+        unsigned long long num_replica{0};
+        unsigned long long timeout;
+        WaitCommand(){
+            type = CommandType::WAIT;
+        }
+        bool is_write_command() const override {
+            return false;
+        }
+        std::string to_resp() const override{
+            std::string num_replica_in_string = std::to_string(num_replica);
+            std::string timeout_in_string = std::to_string(timeout);
+            std::string cmd = "*3\r\n$4\r\nWAIT\r\n";
+            cmd+="$"+std::to_string(num_replica_in_string.length())+"\r\n"+num_replica_in_string+"\r\n";
+            cmd+="$"+std::to_string(timeout_in_string.length())+"\r\n"+timeout_in_string+"\r\n";
             return cmd;
         }
     };
