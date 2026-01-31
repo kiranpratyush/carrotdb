@@ -33,7 +33,7 @@ namespace REPLICATION_NAMESPACE
         bool is_handshake_completed{false};
         std::string repl_id{"?"};
         int64_t offset{-1};
-        int64_t bytes_processed{0};  // Track bytes received from master for ACK
+        int64_t bytes_processed{0}; // Track bytes received from master for ACK
         DB *db{nullptr};
         ServerConfig *config{nullptr};
         void handle_handshake(bool is_read_event, bool &should_invert);
@@ -74,14 +74,14 @@ namespace REPLICATION_NAMESPACE
     private:
         std::vector<std::weak_ptr<Client>> slave_clients;
         std::vector<BlockedWaitClient> blocked_wait_clients;
-        void handle_info(ClientContext c, ServerConfig &config);
-        void handle_replconf(ClientContext c, ServerConfig &config);
-        void handle_psync(ClientContext c, ServerConfig &config);
-        void handle_wait(ClientContext c, ServerConfig &config);
+        void handle_info(ClientContext &c, ServerConfig &config);
+        void handle_replconf(ClientContext &c, ServerConfig &config);
+        void handle_psync(ClientContext &c, ServerConfig &config);
+        void handle_wait(ClientContext &c, ServerConfig &config);
 
     public:
-        bool handle(ClientContext c, ServerConfig &config);
-        bool handle_propagate(ClientContext c, ServerConfig &config);
+        bool handle(ClientContext &c, ServerConfig &config);
+        bool handle_propagate(ClientContext &c, ServerConfig &config);
         void for_each_active_slaves(std::function<void(std::shared_ptr<Client>)> action);
         void check_blocked_wait_clients(ClientContext &c);
         std::vector<int> check_and_expire_blocked_wait_clients();

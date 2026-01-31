@@ -237,7 +237,7 @@ namespace REPLICATION_NAMESPACE
         }
     }
 
-    void ReplicationManager::handle_info(ClientContext c, ServerConfig &config)
+    void ReplicationManager::handle_info(ClientContext &c, ServerConfig &config)
     {
         std::string role_info;
         bool is_master{false};
@@ -262,7 +262,7 @@ namespace REPLICATION_NAMESPACE
         encode_bulk_string(&c.client->write_buffer, role_info);
         return;
     }
-    void ReplicationManager::handle_replconf(ClientContext c, ServerConfig &config)
+    void ReplicationManager::handle_replconf(ClientContext &c, ServerConfig &config)
     {
         // Parse the command to check if it's an ACK
         auto command = CommandParser::parseCommand(c);
@@ -277,10 +277,10 @@ namespace REPLICATION_NAMESPACE
                 c.client->replica_offset = replconf_cmd->ack_offset;
                 std::cout << "[handle_replconf] Received ACK from replica fd=" << c.client_fd
                           << " offset=" << replconf_cmd->ack_offset << std::endl;
-                
+
                 // Check if any blocked WAIT clients can now be unblocked
                 check_blocked_wait_clients(c);
-                
+
                 // No response needed for ACK
                 return;
             }
@@ -289,7 +289,7 @@ namespace REPLICATION_NAMESPACE
         return;
     }
 
-    void ReplicationManager::handle_psync(ClientContext c, ServerConfig &config)
+    void ReplicationManager::handle_psync(ClientContext &c, ServerConfig &config)
     {
         encode_simple_string(&c.client->write_buffer, "FULLRESYNC 12345 0");
         std::vector<char> rdb_content = read_rdb_file(config.rdb_file_path);
@@ -315,7 +315,7 @@ namespace REPLICATION_NAMESPACE
         return;
     }
 
-    void ReplicationManager::handle_wait(ClientContext c, ServerConfig &config)
+    void ReplicationManager::handle_wait(ClientContext &c, ServerConfig &config)
     {
         // Parse the WAIT command to get num_replica and timeout
         auto command = CommandParser::parseCommand(c);
@@ -362,7 +362,7 @@ namespace REPLICATION_NAMESPACE
                 }
             }
         }
-        
+
         if (already_acked >= num_replicas_needed)
         {
             std::cout << "[handle_wait] Already have " << already_acked << " replicas caught up" << std::endl;
@@ -420,7 +420,7 @@ namespace REPLICATION_NAMESPACE
                 }
             }
 
-            std::cout << "[check_blocked_wait] acked=" << acked_replicas 
+            std::cout << "[check_blocked_wait] acked=" << acked_replicas
                       << " needed=" << it->num_replicas_needed << std::endl;
 
             if (acked_replicas >= it->num_replicas_needed)
@@ -428,7 +428,7 @@ namespace REPLICATION_NAMESPACE
                 // Unblock the client with success
                 blocked_client->write_buffer.append(":" + std::to_string(acked_replicas) + "\r\n");
                 c.unblocked_client_fd = it->client_fd;
-                std::cout << "[check_blocked_wait] Unblocking client fd=" << it->client_fd 
+                std::cout << "[check_blocked_wait] Unblocking client fd=" << it->client_fd
                           << " with " << acked_replicas << " replicas" << std::endl;
                 it = blocked_wait_clients.erase(it);
             }
@@ -465,7 +465,7 @@ namespace REPLICATION_NAMESPACE
                     }
                     blocked_client->write_buffer.append(":" + std::to_string(acked_replicas) + "\r\n");
                     expired_fds.push_back(it->client_fd);
-                    std::cout << "[expire_blocked_wait] Timeout for client fd=" << it->client_fd 
+                    std::cout << "[expire_blocked_wait] Timeout for client fd=" << it->client_fd
                               << " returning " << acked_replicas << " replicas" << std::endl;
                 }
                 it = blocked_wait_clients.erase(it);
@@ -493,11 +493,12 @@ namespace REPLICATION_NAMESPACE
                 continue;
 
             auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
-                blocked.timeout_at - now).count();
-            
+                                 blocked.timeout_at - now)
+                                 .count();
+
             if (remaining <= 0)
                 return 0; // Already expired
-            
+
             if (min_timeout == -1 || remaining < min_timeout)
                 min_timeout = static_cast<int>(remaining);
         }
@@ -506,7 +507,7 @@ namespace REPLICATION_NAMESPACE
     }
 
     /*TODO: Add better command parsing logic */
-    bool ReplicationManager::handle(ClientContext c, ServerConfig &config)
+    bool ReplicationManager::handle(ClientContext &c, ServerConfig &config)
     {
         // Parse the command
         auto command = CommandParser::parseCommand(c);
@@ -534,7 +535,7 @@ namespace REPLICATION_NAMESPACE
         }
         return false;
     }
-    bool ReplicationManager::handle_propagate(ClientContext c, ServerConfig &config)
+    bool ReplicationManager::handle_propagate(ClientContext &c, ServerConfig &config)
     {
         std::cout << "[handle_propagate] slave_clients.size()=" << slave_clients.size() << std::endl;
         if (slave_clients.empty())
