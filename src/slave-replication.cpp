@@ -48,8 +48,11 @@ namespace SLAVE_REPLICATION_NAMESPACE
             auto client_context = ClientContext{std::shared_ptr<Client>(this, [](Client *) {}), fd};
             client_context.command = CommandParser::parseCommand(client_context);
 
-            if (!client_context.command)
+            if (client_context.command->type == CommandType::UNKNOWN)
+            {
+                std::cout << "[process_commands] buffer" << client_context.client->read_buffer << std::endl;
                 break;
+            }
 
             if (client_context.command->type == CommandType::REPLCONF)
             {
@@ -99,32 +102,45 @@ namespace SLAVE_REPLICATION_NAMESPACE
         }
         else if (replication_status == ReplicationStatus::PSYNC_SENT)
         {
-            replication_status = ReplicationStatus::HANDSHAKE_SUCCESS;
-            is_handshake_completed = true;
+            // First, clean up the FULLRESYNC response
+            size_t fullresync_end = read_buffer.find("\r\n");
+            if (fullresync_end == std::string::npos)
+            {
+                // Incomplete FULLRESYNC response, wait for more data
+                return;
+            }
+            std::string fullresync_response = read_buffer.substr(0, fullresync_end);
+            std::cout << "FULLRESYNC response: " << fullresync_response << std::endl;
+            read_buffer.erase(0, fullresync_end + 2);
 
-            size_t rdb_start = read_buffer.find("$");
-            if (rdb_start != std::string::npos)
+            // Then, handle the RDB if present
+            if (!read_buffer.empty() && read_buffer[0] == '$')
             {
                 std::cout << "RDB received, skipping..." << std::endl;
-                size_t length_start = rdb_start + 1;
-                size_t length_end = read_buffer.find("\r\n", length_start);
-                if (length_end != std::string::npos)
+                size_t length_end = read_buffer.find("\r\n", 1);
+                if (length_end == std::string::npos)
                 {
-                    std::string length_str = read_buffer.substr(length_start, length_end - length_start);
-                    unsigned long long rdb_length = 0;
-                    if (convert_positive_string_to_number(length_str, rdb_length))
+                    // Incomplete RDB header, wait for more data
+                    return;
+                }
+                std::string length_str = read_buffer.substr(1, length_end - 1);
+                unsigned long long rdb_length = 0;
+                if (convert_positive_string_to_number(length_str, rdb_length))
+                {
+                    size_t rdb_end = length_end + 2 + rdb_length;
+                    if (rdb_end > read_buffer.size())
                     {
-                        size_t rdb_end = length_end + 2 + rdb_length;
-                        if (rdb_end <= read_buffer.size())
-                        {
-                            read_buffer.erase(0, rdb_end);
-                            std::cout << "RDB skipped, remaining: " << read_buffer.size() << " bytes" << std::endl;
-                            return;
-                        }
+                        // Incomplete RDB data, wait for more data
+                        return;
                     }
+                    read_buffer.erase(0, rdb_end);
+                    std::cout << "RDB skipped, remaining: " << read_buffer.size() << " bytes" << std::endl;
                 }
             }
-            read_buffer.clear();
+
+            // Mark handshake as completed, remaining commands stay in buffer
+            replication_status = ReplicationStatus::HANDSHAKE_SUCCESS;
+            is_handshake_completed = true;
             return;
         }
         read_buffer.clear();
