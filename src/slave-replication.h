@@ -31,7 +31,7 @@ namespace SLAVE_REPLICATION_NAMESPACE
         uint port{6380};
         bool is_handshake_completed{false};
         std::string repl_id{"?"};
-        int64_t offset{0};
+        int64_t offset{-1};
         int64_t bytes_processed{0};
         DB *db{nullptr};
         ServerConfig *config{nullptr};
