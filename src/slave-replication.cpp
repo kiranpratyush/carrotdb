@@ -50,7 +50,7 @@ namespace SLAVE_REPLICATION_NAMESPACE
 
             if (!client_context.command)
                 break;
-
+            bytes_processed += client_context.command->bytes_processed;
             if (client_context.command->type == CommandType::REPLCONF)
             {
                 auto *replconf_cmd = static_cast<ReplConfCommand *>(client_context.command.get());
@@ -68,7 +68,6 @@ namespace SLAVE_REPLICATION_NAMESPACE
 
             db->execute(client_context, config);
             write_buffer.clear();
-            bytes_processed += client_context.command->bytes_processed;
             std::cout << "[process_commands] bytes_processed=" << bytes_processed << std::endl;
         }
     }
