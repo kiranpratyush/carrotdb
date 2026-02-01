@@ -50,7 +50,7 @@ namespace SLAVE_REPLICATION_NAMESPACE
 
             if (!client_context.command)
                 break;
-            bytes_processed += client_context.command->bytes_processed;
+
             if (client_context.command->type == CommandType::REPLCONF)
             {
                 auto *replconf_cmd = static_cast<ReplConfCommand *>(client_context.command.get());
@@ -62,11 +62,12 @@ namespace SLAVE_REPLICATION_NAMESPACE
                     encode_bulk_string(&write_buffer, "REPLCONF");
                     encode_bulk_string(&write_buffer, "ACK");
                     encode_bulk_string(&write_buffer, std::to_string(bytes_processed));
+                    bytes_processed += client_context.command->bytes_processed;
                     continue;
                 }
             }
-
             db->execute(client_context, config);
+            bytes_processed += client_context.command->bytes_processed;
             write_buffer.clear();
             std::cout << "[process_commands] bytes_processed=" << bytes_processed << std::endl;
         }
