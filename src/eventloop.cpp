@@ -3,7 +3,7 @@
 namespace EVENT_LOOP_NAMESPACE
 {
 
-    void EpollEventLoop::run(uint32_t timems)
+    void EpollEventLoop::run(int32_t timems)
     {
         epoll_event events[64]; /*Hard coded for now*/
         int n = epoll_wait(epoll_instance_fd, events, 64, timems);

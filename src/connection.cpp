@@ -1,10 +1,26 @@
 #include "connection.h"
 #include "eventloop.h"
+#include <fcntl.h>
+#include <iostream>
 
 using namespace EVENT_LOOP_NAMESPACE;
 
 namespace CONNECTION_NAMEAPACE
 {
+    TcpConnection::TcpConnection(std::shared_ptr<Client> _client, IEventLoop &_eventLoop, onMessageCallBack _callback)
+        : client(_client), eventloop(_eventLoop), cb(_callback)
+    {
+        // Ensure socket is non-blocking for edge-triggered epoll
+        int flags = fcntl(client->fd, F_GETFL, 0);
+        if (flags != -1)
+        {
+            if (fcntl(client->fd, F_SETFL, flags | O_NONBLOCK) == -1)
+            {
+                std::cerr << "Warning: Failed to set socket non-blocking\n";
+            }
+        }
+    }
+
     void TcpConnection::handleRead()
     {
         char temp[1024];
@@ -73,6 +89,15 @@ namespace CONNECTION_NAMEAPACE
         client->write_buffer.append(data);
         if (was_empty)
             eventloop.update_event_handler(this, READ_EVENT | WRITE_EVENT);
+    }
+
+    void TcpConnection::flush()
+    {
+        // Enable write events if buffer has data
+        if (!client->write_buffer.empty())
+        {
+            eventloop.update_event_handler(this, READ_EVENT | WRITE_EVENT);
+        }
     }
 
     void TcpConnection::handleClose()

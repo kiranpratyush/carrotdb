@@ -1,4 +1,5 @@
-
+#ifndef IEVENTLOOP
+#define IEVENTLOOP
 #include <memory>
 #include <cstdint>
 #include <sys/epoll.h>
@@ -25,5 +26,6 @@ public:
     virtual void register_event_handler(IEventHandler *, uint32_t) = 0;
     virtual void update_event_handler(IEventHandler *, uint32_t) = 0;
     virtual void remove_event_handler(IEventHandler *) = 0;
-    virtual void run(uint32_t time_ms) = 0;
+    virtual void run(int32_t time_ms) = 0;
 };
+#endif

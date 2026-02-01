@@ -23,16 +23,22 @@ namespace CONNECTION_NAMEAPACE
         onMessageCallBack cb;
 
     public:
-        TcpConnection(std::shared_ptr<Client> _client, IEventLoop &_eventLoop, onMessageCallBack _callback) : client(_client), eventloop(_eventLoop), cb(_callback) {}
+        TcpConnection(std::shared_ptr<Client> _client, IEventLoop &_eventLoop, onMessageCallBack _callback);
 
         inline int getfd() override
         {
             return client->fd;
         }
 
+        inline std::shared_ptr<Client> getClient()
+        {
+            return client;
+        }
+
         void handleWrite() override;
         void handleRead() override;
         void send(std::string &) override;
+        void flush(); // Trigger write for existing buffer data
         void handleClose();
         void handleError();
     };

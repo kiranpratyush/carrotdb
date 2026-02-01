@@ -56,7 +56,7 @@ namespace EVENT_LOOP_NAMESPACE
                 return;
             }
         }
-        void run(uint32_t time_ms) override;
+        void run(int32_t time_ms) override;
     };
 
 }

@@ -26,8 +26,6 @@ namespace SERVER_NAMESPACE
                     if (port > 0 && port <= 65535)
                     {
                         config.port = port;
-                        server_addr.sin_port = htons(port);
-                        std::cout << "Using port: " << port << std::endl;
                     }
                     else
                     {

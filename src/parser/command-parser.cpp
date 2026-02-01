@@ -9,6 +9,8 @@ namespace REDIS_NAMESPACE
 {
     std::unique_ptr<Command> CommandParser::parseCommand(ClientContext &c)
     {
+        size_t start_position = c.current_read_position;
+
         ParsedToken t = Parser::Parse(c);
 
         if (t.type != ParsedToken::Type::ARRAY)
@@ -18,52 +20,72 @@ namespace REDIS_NAMESPACE
         auto total_commands = t.length;
         t = Parser::Parse(c);
         std::string_view cmd_name{c.client->read_buffer.data() + t.start_pos, t.end_pos - t.start_pos + 1};
-
+        bool isParsedUnknown = false;
+        std::unique_ptr<Command> cmd;
         if (is_equal(cmd_name, "PING"))
-            return parsePingCommand(c);
+            cmd = parsePingCommand(c);
         else if (is_equal(cmd_name, "ECHO"))
-            return parseEchoCommand(c);
+            cmd = parseEchoCommand(c);
         else if (is_equal(cmd_name, "SET"))
-            return parseSetCommand(c, total_commands - 1);
+            cmd = parseSetCommand(c, total_commands - 1);
         else if (is_equal(cmd_name, "GET"))
-            return parseGetCommand(c);
+            cmd = parseGetCommand(c);
         else if (is_equal(cmd_name, "TYPE"))
-            return parseTypeCommand(c);
+            cmd = parseTypeCommand(c);
         else if (is_equal(cmd_name, "INCR"))
-            return parseIncrCommand(c);
+            cmd = parseIncrCommand(c);
         else if (is_equal(cmd_name, "RPUSH"))
-            return parseRpushCommand(c, total_commands - 1);
+            cmd = parseRpushCommand(c, total_commands - 1);
         else if (is_equal(cmd_name, "LPUSH"))
-            return parseLpushCommand(c, total_commands - 1);
+            cmd = parseLpushCommand(c, total_commands - 1);
         else if (is_equal(cmd_name, "LRANGE"))
-            return parseLrangeCommand(c);
+            cmd = parseLrangeCommand(c);
         else if (is_equal(cmd_name, "LLEN"))
-            return parseLlenCommand(c);
+            cmd = parseLlenCommand(c);
         else if (is_equal(cmd_name, "LPOP"))
-            return parseLpopCommand(c, total_commands - 1);
+            cmd = parseLpopCommand(c, total_commands - 1);
         else if (is_equal(cmd_name, "BLPOP"))
-            return parseBlpopCommand(c, total_commands - 1);
+            cmd = parseBlpopCommand(c, total_commands - 1);
         else if (is_equal(cmd_name, "XADD"))
-            return parseXaddCommand(c, total_commands - 1);
+            cmd = parseXaddCommand(c, total_commands - 1);
         else if (is_equal(cmd_name, "XRANGE"))
-            return parseXrangeCommand(c);
+            cmd = parseXrangeCommand(c);
         else if (is_equal(cmd_name, "XREAD"))
-            return parseXreadCommand(c, total_commands - 1);
+            cmd = parseXreadCommand(c, total_commands - 1);
         else if (is_equal(cmd_name, "MULTI"))
-            return parseMultiCommand(c);
+            cmd = parseMultiCommand(c);
         else if (is_equal(cmd_name, "EXEC"))
-            return parseExecCommand(c);
+            cmd = parseExecCommand(c);
         else if (is_equal(cmd_name, "DISCARD"))
-            return parseDiscardCommand(c);
+            cmd = parseDiscardCommand(c);
         else if (is_equal(cmd_name, "INFO"))
-            return parseInfoCommand(c, total_commands - 1);
+            cmd = parseInfoCommand(c, total_commands - 1);
         else if (is_equal(cmd_name, "REPLCONF"))
-            return parseReplConfCommand(c, total_commands - 1);
+            cmd = parseReplConfCommand(c, total_commands - 1);
         else if (is_equal(cmd_name, "PSYNC"))
-            return parsePsyncCommand(c, total_commands - 1);
+            cmd = parsePsyncCommand(c, total_commands - 1);
         else if (is_equal(cmd_name, "WAIT"))
-            return parseWaitCommand(c, total_commands - 1);
-        return std::make_unique<UnknowCommand>();
+            cmd = parseWaitCommand(c, total_commands - 1);
+        else
+        {
+            cmd = std::make_unique<UnknowCommand>();
+            isParsedUnknown = true;
+        }
+
+        // Track bytes processed and clean up the read buffer
+        size_t bytes_parsed = c.current_read_position - start_position;
+        cmd->bytes_processed = bytes_parsed;
+        c.command_bytes = bytes_parsed;
+
+        // Clean up the parsed portion from read buffer
+        if (isParsedUnknown)
+            c.client->read_buffer.clear();
+        else
+            c.client->read_buffer.erase(0, bytes_parsed);
+        // Reset position since we cleaned the buffer
+        c.current_read_position = 0;
+
+        return cmd;
     }
 
     std::unique_ptr<Command> CommandParser::parsePingCommand(ClientContext &c)
@@ -571,7 +593,45 @@ namespace REDIS_NAMESPACE
     std::unique_ptr<Command> CommandParser::parsePsyncCommand(ClientContext &c, int total_commands)
     {
         auto cmd = std::make_unique<PsyncCommand>();
-        return cmd; // TODO
+
+        // Parse replication ID
+        ParsedToken repl_id_token = Parser::Parse(c);
+        if (repl_id_token.type != ParsedToken::Type::BULK_STRING)
+            return std::make_unique<UnknowCommand>();
+
+        cmd->repl_id = std::string{c.client->read_buffer.data() + repl_id_token.start_pos,
+                                   repl_id_token.end_pos - repl_id_token.start_pos + 1};
+
+        // Parse offset
+        if (total_commands > 1)
+        {
+            ParsedToken offset_token = Parser::Parse(c);
+            if (offset_token.type != ParsedToken::Type::BULK_STRING)
+                return std::make_unique<UnknowCommand>();
+
+            std::string_view offset_str{c.client->read_buffer.data() + offset_token.start_pos,
+                                        offset_token.end_pos - offset_token.start_pos + 1};
+
+            // Handle both positive numbers and -1
+            if (offset_str == "-1")
+            {
+                cmd->offset = -1;
+            }
+            else
+            {
+                unsigned long long temp_offset;
+                if (convert_positive_string_to_number(offset_str, temp_offset))
+                {
+                    cmd->offset = static_cast<int64_t>(temp_offset);
+                }
+                else
+                {
+                    cmd->offset = -1;
+                }
+            }
+        }
+
+        return cmd;
     }
 
     std::unique_ptr<Command> CommandParser::parseWaitCommand(ClientContext &c, int total_commands)

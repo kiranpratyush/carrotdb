@@ -38,6 +38,7 @@ namespace REDIS_NAMESPACE
     {
         CommandType type{};
         std::string key{};
+        size_t bytes_processed{0};  // Bytes consumed from read_buffer when parsing this command
         virtual ~Command() = default;
         virtual bool is_write_command() const = 0;
         virtual std::string to_resp() const = 0;

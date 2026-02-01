@@ -12,6 +12,12 @@
 
 using namespace REDIS_NAMESPACE;
 
+// Forward declaration
+namespace CONNECTION_NAMEAPACE
+{
+    class TcpConnection;
+}
+
 namespace SERVER_NAMESPACE
 {
     struct ClientStates
@@ -61,7 +67,12 @@ namespace SERVER_NAMESPACE
         unsigned long long current_write_position{};
         bool isBlocked{false};
         int unblocked_client_fd{-1};
-        ClientContext(std::shared_ptr<Client> client, int fd) : client{client}, client_fd{fd}
+        CONNECTION_NAMEAPACE::TcpConnection *connection{nullptr};
+        std::unique_ptr<Command> command{nullptr}; // Parsed command (parse once, use everywhere)
+        size_t command_bytes{0};                   // Bytes consumed from read_buffer for this command
+
+        ClientContext(std::shared_ptr<Client> client, int fd, CONNECTION_NAMEAPACE::TcpConnection *conn = nullptr)
+            : client{client}, client_fd{fd}, connection{conn}
         {
         }
     };
@@ -134,7 +145,7 @@ namespace SERVER_NAMESPACE
         int client_fd;
         std::chrono::steady_clock::time_point timeout_at;
         uint64_t num_replicas_needed;
-        int64_t master_offset; // The offset that replicas need to reach
+        int64_t master_offset;
 
         BlockedWaitClient(std::weak_ptr<Client> c, int fd, uint64_t timeout_ms, uint64_t num_replicas, int64_t offset)
             : client(c), client_fd(fd), num_replicas_needed(num_replicas), master_offset(offset)

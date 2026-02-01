@@ -74,20 +74,25 @@ namespace REDIS_NAMESPACE
 
     void DB::execute(ClientContext &c, ServerConfig *serverConfig)
     {
-        std::unique_ptr<Command> cmd = CommandParser::parseCommand(c);
+        // Use command from ClientContext (already parsed in server)
+        if (!c.command)
+        {
+            std::cerr << "No command in ClientContext" << std::endl;
+            return;
+        }
         
         if (c.client->isClientOnTransaction())
         {
-            if (cmd->type != CommandType::EXEC && cmd->type != CommandType::DISCARD)
+            if (c.command->type != CommandType::EXEC && c.command->type != CommandType::DISCARD)
             {
-                c.client->queued_commands.push_back(std::move(cmd));
+                c.client->queued_commands.push_back(std::move(c.command));
                 OngoingTransactionClient client{c.client, c.client_fd};
                 watching_keys[c.client->queued_commands.back()->key].push_back(client);
                 encode_simple_string(&c.client->write_buffer, "QUEUED");
                 return;
             }
         }
-        call(c, *cmd);
+        call(c, *c.command);
     }
 
     void DB::handle_ping(ClientContext &c)
