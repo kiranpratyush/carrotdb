@@ -72,7 +72,6 @@ namespace SLAVE_REPLICATION_NAMESPACE
             std::cout << "[process_commands] bytes_processed=" << bytes_processed << std::endl;
         }
     }
-
     void SlaveReplicationClient::handle_handshake_read()
     {
         std::string response;
