@@ -30,7 +30,6 @@ namespace SLAVE_REPLICATION_NAMESPACE
         }
         else
         {
-            std::cout << "[process_read_buffer] Processing commands" << std::endl;
             process_commands();
         }
     }

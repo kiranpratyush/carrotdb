@@ -73,7 +73,6 @@ namespace MASTER_CONNECTION_NAMESPACE
             else
             {
                 std::cout << "[SLAVE] File Empty" << std::endl;
-                // handleClose();
                 return;
             }
         }
