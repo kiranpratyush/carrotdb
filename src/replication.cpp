@@ -38,8 +38,9 @@ namespace
         std::vector<char> buffer(size);
         if (!file.read(buffer.data(), size))
         {
-            std::cerr << "Error: Could not read RDB file content." << std::endl;
-            return {};
+            std::cerr << "Error: Could not read RDB file content, using empty RDB" << std::endl;
+            file.close();
+            return get_empty_rdb();
         }
         file.close();
         return buffer;
