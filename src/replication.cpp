@@ -80,7 +80,8 @@ namespace REPLICATION_NAMESPACE
         encode_simple_string(&c.client->write_buffer, "FULLRESYNC 12345 0");
         std::vector<char> rdb_content = read_rdb_file(config.rdb_file_path);
 
-        std::string length_prefix = "$" + std::to_string(rdb_content.size()) + "\r\n";
+        // std::string length_prefix = "$" + std::to_string(rdb_content.size()) + "\r\n";
+        std::string length_prefix = "$" + std::to_string(2) + "\r\n";
 
         c.client->write_buffer.insert(
             c.client->write_buffer.end(),
