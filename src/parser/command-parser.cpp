@@ -13,19 +13,17 @@ namespace REDIS_NAMESPACE
 
         ParsedToken t = Parser::Parse(c);
 
-        if (t.type != ParsedToken::Type::ARRAY)
+        if (t.type == ParsedToken::Type::UNKNOWN)
+            return std::make_unique<UnknowCommand>();
+
+        if (t.type == ParsedToken::Type::BULK_STRING)
         {
             std::string &buffer = c.client->read_buffer;
-            size_t next_array = buffer.find('*', c.current_read_position);
-            if (next_array != std::string::npos && next_array > 0)
-            {
-                std::cout << "[parseCommand] Skipping " << next_array << " bytes of non-RESP data (possibly RDB)" << std::endl;
-                buffer.erase(0, next_array);
-                c.current_read_position = 0;
-                // Try parsing again after cleanup
-                return parseCommand(c);
-            }
-            return std::make_unique<UnknowCommand>();
+            size_t bulk_string_total_size = t.end_pos + 1;
+            std::cout << "[parseCommand] Detected bulk string (possibly RDB data), skipping " << bulk_string_total_size << " bytes" << std::endl;
+            buffer.erase(0, bulk_string_total_size);
+            c.current_read_position = 0;
+            return parseCommand(c);
         }
         auto total_commands = t.length;
         t = Parser::Parse(c);

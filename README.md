@@ -7,7 +7,3 @@ What the heck is a stream in general
 - stream classes in c++ provide an abstraction (Gives same interface) to interact with I/O devices
 - I have to use IfStream and OfStream to read and write data to and fro from the file
 
-
-
-
-- Just figure out to encode into the RDB file format and send it 
