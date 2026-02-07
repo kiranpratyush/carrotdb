@@ -24,6 +24,10 @@ namespace REDIS_NAMESPACE
         std::vector<int> check_and_expire_blocked_clients();
         int get_next_timeout_ms();
 
+        // Direct key-value storage functions (used by RDB parser)
+        void set(const std::string &key, const std::string &value);
+        void setWithExpiry(const std::string &key, const std::string &value, uint64_t expiryTimestampMs);
+
     private:
         std::unordered_map<std::string, RedisObject> store{};
         std::unordered_map<std::string, std::chrono::steady_clock::time_point> expiration{};
@@ -49,6 +53,7 @@ namespace REDIS_NAMESPACE
         void handle_exec(ClientContext &context, const ExecCommand &cmd);
         void handle_discard(ClientContext &context, const DiscardCommand &cmd);
         void handleGetConfig(ClientContext &context, const ServerConfig *config);
+        void handleKeys(ClientContext &context);
         void signal_key_ready(const std::string &key, ClientContext &context);
         void handle_blocked_xread_clients(const std::string &key, ClientContext &context);
         void mark_watching_clients_dirty(const std::string &key);

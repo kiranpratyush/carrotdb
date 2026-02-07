@@ -15,6 +15,7 @@ namespace SERVER_NAMESPACE
 
     int Server::setup()
     {
+        rdb.setFilePath(config.rdb_file_path + "/" + config.rdb_file_name);
         eventloop = std::make_unique<EpollEventLoop>();
 
         auto callback = [this](std::shared_ptr<Client> client)
@@ -38,7 +39,7 @@ namespace SERVER_NAMESPACE
                 config.master_port,
                 config.port,
                 *eventloop,
-                &db,
+                db.get(),
                 &config);
 
             if (!master_connection->isConnected())
@@ -57,9 +58,23 @@ namespace SERVER_NAMESPACE
     {
         std::cout << "Server running with reactor pattern...\n";
 
+        if (!config.rdb_file_path.empty() && !config.rdb_file_name.empty())
+        {
+            std::cout << "Loading RDB file: " << config.rdb_file_path << "/" << config.rdb_file_name << std::endl;
+            try
+            {
+                rdb.parse();
+                std::cout << "RDB file loaded successfully" << std::endl;
+            }
+            catch (const std::exception &e)
+            {
+                std::cerr << "Failed to load RDB file: " << e.what() << std::endl;
+            }
+        }
+
         while (true)
         {
-            int timeout_ms = db.get_next_timeout_ms();
+            int timeout_ms = db->get_next_timeout_ms();
             int wait_timeout_ms = replicationManager.get_next_wait_timeout_ms();
             if (wait_timeout_ms >= 0)
             {
@@ -112,7 +127,7 @@ namespace SERVER_NAMESPACE
         bool status = replicationManager.handle(client_context, config);
         if (!status)
         {
-            db.execute(client_context, &config);
+            db->execute(client_context, &config);
             replicationManager.propagateAndNotifySlaves(client_context, config);
         }
 
@@ -133,7 +148,7 @@ namespace SERVER_NAMESPACE
 
     void Server::handle_expired_blocked_clients()
     {
-        std::vector<int> expired_fds = db.check_and_expire_blocked_clients();
+        std::vector<int> expired_fds = db->check_and_expire_blocked_clients();
 
         for (int fd : expired_fds)
         {

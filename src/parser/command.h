@@ -31,7 +31,8 @@ namespace REDIS_NAMESPACE
         REPLCONF,
         PSYNC,
         WAIT,
-        GETCONFIG
+        GETCONFIG,
+        KEYS
     };
 
     // Base command structure
@@ -543,6 +544,24 @@ namespace REDIS_NAMESPACE
         GetConfigCommand()
         {
             type = CommandType::GETCONFIG;
+        }
+        bool is_write_command() const override
+        {
+            return false;
+        }
+        std::string to_resp() const override
+        {
+            return "";
+        }
+    };
+
+    struct KeysCommand : public Command
+    {
+        std::string pattern{};
+
+        KeysCommand()
+        {
+            type = CommandType::KEYS;
         }
         bool is_write_command() const override
         {

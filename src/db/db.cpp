@@ -66,6 +66,9 @@ namespace REDIS_NAMESPACE
         case CommandType::DISCARD:
             handle_discard(c, static_cast<const DiscardCommand &>(cmd));
             break;
+        case CommandType::KEYS:
+            handleKeys(c);
+            break;
         default:
             handle_ping(c);
             break;
@@ -239,6 +242,30 @@ namespace REDIS_NAMESPACE
         }
 
         return expired_fds;
+    }
+
+    void DB::set(const std::string &key, const std::string &value)
+    {
+        RedisObject redisObject{};
+        redisObject.type = RedisObjectEncodingType::STRING;
+        redisObject.stringPtr = std::move(std::make_unique<std::string>(value));
+
+        store[key] = std::move(redisObject);
+        expiration.erase(key);
+    }
+
+    void DB::setWithExpiry(const std::string &key, const std::string &value, uint64_t expiryTimestampMs)
+    {
+        set(key, value);
+
+        auto systemNow = std::chrono::system_clock::now();
+        auto steadyNow = std::chrono::steady_clock::now();
+
+        auto expirySystemTime = std::chrono::system_clock::time_point(
+            std::chrono::milliseconds(expiryTimestampMs));
+
+        auto durationToExpiry = expirySystemTime - systemNow;
+        expiration[key] = steadyNow + durationToExpiry;
     }
 
 }

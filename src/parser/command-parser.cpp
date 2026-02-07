@@ -15,7 +15,6 @@ namespace REDIS_NAMESPACE
 
         if (t.type != ParsedToken::Type::ARRAY)
         {
-            // Could be RDB content or other non-RESP data, skip till next array marker
             std::string &buffer = c.client->read_buffer;
             size_t next_array = buffer.find('*', c.current_read_position);
             if (next_array != std::string::npos && next_array > 0)
@@ -79,6 +78,8 @@ namespace REDIS_NAMESPACE
             cmd = parseWaitCommand(c, total_commands - 1);
         else if (is_equal(cmd_name, "CONFIG"))
             cmd = parseGetConfigCommand(c, total_commands - 1);
+        else if (is_equal(cmd_name, "KEYS"))
+            cmd = parseKeysCommand(c, total_commands - 1);
         else
         {
             cmd = std::make_unique<UnknowCommand>();
@@ -682,6 +683,18 @@ namespace REDIS_NAMESPACE
             total_commands--;
         }
         return getConfigCommand;
+    }
+
+    std::unique_ptr<Command> CommandParser::parseKeysCommand(ClientContext &c, int total_commands)
+    {
+        auto unknownCommand = std::make_unique<UnknowCommand>();
+        auto keysCommand = std::make_unique<KeysCommand>();
+        ParsedToken parameterToken = Parser::Parse(c);
+        if (parameterToken.type != ParsedToken::Type::BULK_STRING)
+            return unknownCommand;
+        std::string_view parameter{c.client->read_buffer.data() + parameterToken.start_pos, parameterToken.end_pos - parameterToken.start_pos + 1};
+        keysCommand->pattern = parameter;
+        return keysCommand;
     }
 
 }

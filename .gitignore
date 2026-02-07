@@ -1048,3 +1048,6 @@ vcpkg_installed
 
 # gdb related file 
 .gdb_history
+
+#code files
+temp
