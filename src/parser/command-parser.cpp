@@ -15,6 +15,17 @@ namespace REDIS_NAMESPACE
 
         if (t.type != ParsedToken::Type::ARRAY)
         {
+            // Could be RDB content or other non-RESP data, skip till next array marker
+            std::string &buffer = c.client->read_buffer;
+            size_t next_array = buffer.find('*', c.current_read_position);
+            if (next_array != std::string::npos && next_array > 0)
+            {
+                std::cout << "[parseCommand] Skipping " << next_array << " bytes of non-RESP data (possibly RDB)" << std::endl;
+                buffer.erase(0, next_array);
+                c.current_read_position = 0;
+                // Try parsing again after cleanup
+                return parseCommand(c);
+            }
             return std::make_unique<UnknowCommand>();
         }
         auto total_commands = t.length;

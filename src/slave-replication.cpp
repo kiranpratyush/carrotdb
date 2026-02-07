@@ -51,13 +51,6 @@ namespace SLAVE_REPLICATION_NAMESPACE
             if (client_context.command->type == CommandType::UNKNOWN)
             {
                 std::cout << "[process_commands] buffer" << client_context.client->read_buffer << std::endl;
-                size_t pos = read_buffer.find("\r\n");
-                if (pos != std::string::npos)
-                {
-                    read_buffer.erase(0, pos + 2);
-                    std::cout << "[process_commands] Skipped unknown data, remaining: " << read_buffer.size() << " bytes" << std::endl;
-                    continue;
-                }
                 break;
             }
 
