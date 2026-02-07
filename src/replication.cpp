@@ -14,13 +14,24 @@ using namespace MASTER_CONNECTION_NAMESPACE;
 
 namespace
 {
+    std::vector<char> get_empty_rdb()
+    {
+        // Minimal empty RDB: REDIS0011 + FF (EOF) + 8-byte zero checksum
+        const unsigned char empty_rdb[] = {
+            0x52, 0x45, 0x44, 0x49, 0x53, 0x30, 0x30, 0x31, 0x31, // REDIS0011
+            0xFF,                                                 // EOF
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00        // checksum
+        };
+        return std::vector<char>(empty_rdb, empty_rdb + sizeof(empty_rdb));
+    }
+
     std::vector<char> read_rdb_file(std::string_view filepath)
     {
         std::ifstream file(filepath.data(), std::ios::binary | std::ios::ate);
         if (!file)
         {
-            std::cerr << "Error: Could not open RDB file: " << filepath << std::endl;
-            return {};
+            std::cerr << "Warning: Could not open RDB file: " << filepath << ", using empty RDB" << std::endl;
+            return get_empty_rdb();
         }
         std::streamsize size = file.tellg();
         file.seekg(0, std::ios::beg);
@@ -77,11 +88,10 @@ namespace REPLICATION_NAMESPACE
 
     void ReplicationManager::handle_psync(ClientContext &c, ServerConfig &config)
     {
-        encode_simple_string(&c.client->write_buffer, "FULLRESYNC 12345 0");
+        encode_simple_string(&c.client->write_buffer, "FULLRESYNC " + config.replication_id + " 0");
         std::vector<char> rdb_content = read_rdb_file(config.rdb_file_path);
 
-        // std::string length_prefix = "$" + std::to_string(rdb_content.size()) + "\r\n";
-        std::string length_prefix = "$" + std::to_string(2) + "\r\n";
+        std::string length_prefix = "$" + std::to_string(rdb_content.size()) + "\r\n";
 
         c.client->write_buffer.insert(
             c.client->write_buffer.end(),
@@ -91,11 +101,6 @@ namespace REPLICATION_NAMESPACE
             c.client->write_buffer.end(),
             rdb_content.begin(),
             rdb_content.end());
-
-        if (rdb_content.empty())
-        {
-            std::cerr << "Warning: RDB content is empty" << std::endl;
-        }
 
         // Only register slave if not already registered
         if (!c.client->isslave)
