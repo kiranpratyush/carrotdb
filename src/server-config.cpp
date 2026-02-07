@@ -72,6 +72,20 @@ namespace SERVER_NAMESPACE
                     std::cerr << "--replicaof flag requires hostname and port" << std::endl;
                 }
             }
+            if (is_equal(argv[i], "--dir"))
+            {
+                if (i + 1 < argc)
+                {
+                    config.rdb_file_path = argv[i + 1];
+                }
+            }
+            if (is_equal(argv[i], "--dbfilename"))
+            {
+                if (i + 1 < argc)
+                {
+                    config.rdb_file_name = argv[i + 1];
+                }
+            }
             config.rdb_file_path = "temp/empty.rdb";
         }
     }

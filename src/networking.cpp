@@ -4,7 +4,6 @@ namespace NETWORKING
 {
     bool connect_client(std::string_view host, u_int16_t port, int &resultsockfd)
     {
-        // build the server address
         struct sockaddr_in serv_addr;
         memset(&serv_addr, 0, sizeof(serv_addr));
         int sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -27,62 +26,5 @@ namespace NETWORKING
             return false;
         }
         return true;
-        
-    }
-
-    ssize_t read_client(int sockfd, std::string &read_buffer)
-    {
-        char buffer[MAX_BUFFER_SIZE];
-        ssize_t total_bytes_read = 0;
-        
-        // For edge-triggered epoll, we must drain all available data
-        while (true)
-        {
-            ssize_t bytes_read = recv(sockfd, buffer, MAX_BUFFER_SIZE, 0);
-
-            if (bytes_read > 0)
-            {
-                read_buffer.append(buffer, bytes_read);
-                total_bytes_read += bytes_read;
-            }
-            else if (bytes_read == 0)
-            {
-                // Connection closed
-                return 0;
-            }
-            else // bytes_read < 0
-            {
-                if (errno == EAGAIN || errno == EWOULDBLOCK)
-                {
-                    // No more data available, we've drained the socket
-                    break;
-                }
-                else
-                {
-                    // Real error
-                    return -1;
-                }
-            }
-        }
-
-        return total_bytes_read;
-    }
-
-    ssize_t write_client(int sockfd, std::string &write_buffer)
-    {
-        if (write_buffer.empty())
-        {
-            return 0;
-        }
-
-        ssize_t bytes_sent = send(sockfd, write_buffer.c_str(),
-                                  write_buffer.size(), 0);
-
-        if (bytes_sent > 0)
-        {
-            write_buffer.erase(0, bytes_sent);
-        }
-
-        return bytes_sent;
     }
 }

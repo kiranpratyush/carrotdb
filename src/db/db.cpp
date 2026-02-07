@@ -74,13 +74,12 @@ namespace REDIS_NAMESPACE
 
     void DB::execute(ClientContext &c, ServerConfig *serverConfig)
     {
-        // Use command from ClientContext (already parsed in server)
         if (!c.command)
         {
             std::cerr << "No command in ClientContext" << std::endl;
             return;
         }
-        
+
         if (c.client->isClientOnTransaction())
         {
             if (c.command->type != CommandType::EXEC && c.command->type != CommandType::DISCARD)
@@ -91,6 +90,11 @@ namespace REDIS_NAMESPACE
                 encode_simple_string(&c.client->write_buffer, "QUEUED");
                 return;
             }
+        }
+        if (c.command->type == CommandType::GETCONFIG)
+        {
+            handleGetConfig(c, serverConfig);
+            return;
         }
         call(c, *c.command);
     }

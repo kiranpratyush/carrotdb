@@ -30,7 +30,8 @@ namespace REDIS_NAMESPACE
         INFO,
         REPLCONF,
         PSYNC,
-        WAIT
+        WAIT,
+        GETCONFIG
     };
 
     // Base command structure
@@ -38,7 +39,7 @@ namespace REDIS_NAMESPACE
     {
         CommandType type{};
         std::string key{};
-        size_t bytes_processed{0};  // Bytes consumed from read_buffer when parsing this command
+        size_t bytes_processed{0}; // Bytes consumed from read_buffer when parsing this command
         virtual ~Command() = default;
         virtual bool is_write_command() const = 0;
         virtual std::string to_resp() const = 0;
@@ -514,22 +515,42 @@ namespace REDIS_NAMESPACE
             return cmd;
         }
     };
-    struct WaitCommand: public Command {
+    struct WaitCommand : public Command
+    {
         unsigned long long num_replica{0};
         unsigned long long timeout;
-        WaitCommand(){
+        WaitCommand()
+        {
             type = CommandType::WAIT;
         }
-        bool is_write_command() const override {
+        bool is_write_command() const override
+        {
             return false;
         }
-        std::string to_resp() const override{
+        std::string to_resp() const override
+        {
             std::string num_replica_in_string = std::to_string(num_replica);
             std::string timeout_in_string = std::to_string(timeout);
             std::string cmd = "*3\r\n$4\r\nWAIT\r\n";
-            cmd+="$"+std::to_string(num_replica_in_string.length())+"\r\n"+num_replica_in_string+"\r\n";
-            cmd+="$"+std::to_string(timeout_in_string.length())+"\r\n"+timeout_in_string+"\r\n";
+            cmd += "$" + std::to_string(num_replica_in_string.length()) + "\r\n" + num_replica_in_string + "\r\n";
+            cmd += "$" + std::to_string(timeout_in_string.length()) + "\r\n" + timeout_in_string + "\r\n";
             return cmd;
+        }
+    };
+    struct GetConfigCommand : public Command
+    {
+        std::vector<std::string> parameters{};
+        GetConfigCommand()
+        {
+            type = CommandType::GETCONFIG;
+        }
+        bool is_write_command() const override
+        {
+            return false;
+        }
+        std::string to_resp() const override
+        {
+            return "";
         }
     };
 

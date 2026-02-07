@@ -66,6 +66,8 @@ namespace REDIS_NAMESPACE
             cmd = parsePsyncCommand(c, total_commands - 1);
         else if (is_equal(cmd_name, "WAIT"))
             cmd = parseWaitCommand(c, total_commands - 1);
+        else if (is_equal(cmd_name, "CONFIG"))
+            cmd = parseGetConfigCommand(c, total_commands - 1);
         else
         {
             cmd = std::make_unique<UnknowCommand>();
@@ -646,6 +648,29 @@ namespace REDIS_NAMESPACE
         std::string_view timeout_ms_in_string{c.client->read_buffer.data() + timeout_token.start_pos, timeout_token.end_pos - timeout_token.start_pos + 1};
         convert_positive_string_to_number(timeout_ms_in_string, cmd->timeout);
         return cmd;
+    }
+
+    std::unique_ptr<Command> CommandParser::parseGetConfigCommand(ClientContext &c, int total_commands)
+    {
+        auto unknownCommand = std::make_unique<UnknowCommand>();
+        auto getConfigCommand = std::make_unique<GetConfigCommand>();
+        ParsedToken configTypeToken = Parser::Parse(c);
+        if (configTypeToken.type != ParsedToken::Type::BULK_STRING)
+            return unknownCommand;
+        std::string_view commandType{c.client->read_buffer.data() + configTypeToken.start_pos, configTypeToken.end_pos - configTypeToken.start_pos + 1};
+        if (!is_equal(commandType, "GET"))
+            return unknownCommand;
+        total_commands--;
+        while (total_commands > 0)
+        {
+            ParsedToken parameterToken = Parser::Parse(c);
+            if (parameterToken.type != ParsedToken::Type::BULK_STRING)
+                return unknownCommand;
+            std::string_view parameterType{c.client->read_buffer.data() + parameterToken.start_pos, parameterToken.end_pos - parameterToken.start_pos + 1};
+            getConfigCommand->parameters.push_back(std::string(parameterType));
+            total_commands--;
+        }
+        return getConfigCommand;
     }
 
 }

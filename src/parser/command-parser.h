@@ -32,8 +32,9 @@ namespace REDIS_NAMESPACE
         static std::unique_ptr<Command> parseExecCommand(ClientContext &c);
         static std::unique_ptr<Command> parseDiscardCommand(ClientContext &c);
         static std::unique_ptr<Command> parseInfoCommand(ClientContext &c, int total_commands);
-        static std::unique_ptr<Command> parseReplConfCommand(ClientContext &c,int total_commands);
-        static std::unique_ptr<Command> parsePsyncCommand(ClientContext &c ,int total_commands);
-        static std::unique_ptr<Command> parseWaitCommand(ClientContext &c,int total_commands);
+        static std::unique_ptr<Command> parseReplConfCommand(ClientContext &c, int total_commands);
+        static std::unique_ptr<Command> parsePsyncCommand(ClientContext &c, int total_commands);
+        static std::unique_ptr<Command> parseWaitCommand(ClientContext &c, int total_commands);
+        static std::unique_ptr<Command> parseGetConfigCommand(ClientContext &c, int total_commands);
     };
 }

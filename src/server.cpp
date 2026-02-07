@@ -15,7 +15,6 @@ namespace SERVER_NAMESPACE
 
     int Server::setup()
     {
-        // Create event loop
         eventloop = std::make_unique<EpollEventLoop>();
 
         auto callback = [this](std::shared_ptr<Client> client)

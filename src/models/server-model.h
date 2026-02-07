@@ -20,5 +20,6 @@ struct ServerConfig
     uint64_t offset{0};
     uint8_t replicationStatus{0};
     std::string rdb_file_path{""};
+    std::string rdb_file_name{""};
 };
 #endif
