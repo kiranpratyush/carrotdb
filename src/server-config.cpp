@@ -86,7 +86,6 @@ namespace SERVER_NAMESPACE
                     config.rdb_file_name = argv[i + 1];
                 }
             }
-            config.rdb_file_path = "temp/empty.rdb";
         }
     }
 
