@@ -588,5 +588,65 @@ namespace REDIS_NAMESPACE
             return "";
         }
     };
-
+    
+    inline std::string commandTypeToString(CommandType type)
+    {
+        switch (type)
+        {
+        case CommandType::ECHO:
+            return "echo";
+        case CommandType::PING:
+            return "ping";
+        case CommandType::SET:
+            return "set";
+        case CommandType::GET:
+            return "get";
+        case CommandType::TYPE:
+            return "type";
+        case CommandType::RPUSH:
+            return "rpush";
+        case CommandType::LPUSH:
+            return "lpush";
+        case CommandType::LRANGE:
+            return "lrange";
+        case CommandType::LLEN:
+            return "llen";
+        case CommandType::LPOP:
+            return "lpop";
+        case CommandType::BLPOP:
+            return "blpop";
+        case CommandType::XADD:
+            return "xadd";
+        case CommandType::XRANGE:
+            return "xrange";
+        case CommandType::XREAD:
+            return "xread";
+        case CommandType::INCR:
+            return "incr";
+        case CommandType::UNKNOWN:
+            return "unknown";
+        case CommandType::MULTI:
+            return "multi";
+        case CommandType::EXEC:
+            return "exec";
+        case CommandType::DISCARD:
+            return "discard";
+        case CommandType::INFO:
+            return "info";
+        case CommandType::REPLCONF:
+            return "replconf";
+        case CommandType::PSYNC:
+            return "psync";
+        case CommandType::WAIT:
+            return "wait";
+        case CommandType::GETCONFIG:
+            return "getconfig";
+        case CommandType::KEYS:
+            return "keys";
+        case CommandType::SUBSCRIBE:
+            return "subscribe";
+        default:
+            return "unknown";
+        }
+    }
 }

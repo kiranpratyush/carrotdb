@@ -7,6 +7,13 @@ namespace REDIS_NAMESPACE
         CommandType::SUBSCRIBE,
         CommandType::PING
     };
+
+    static std::string formatError(CommandType type)
+    {
+        return "Can't execute '"+ commandTypeToString(type)+"': only (P|S)SUBSCRIBE / (P|S)UNSUBSCRIBE / PING / QUIT / RESET are allowed in this context";
+    }
+
+
     void DB::handleSubscribe(ClientContext &c)
     {
         SubscribeCommand *command = static_cast<SubscribeCommand*>(c.command.get());
@@ -26,7 +33,7 @@ namespace REDIS_NAMESPACE
         if(it == allowedPubSubCommands.end())
         {
             /*Send Error*/
-            encode_error(&c.client->write_buffer,"Can't execute 'echo': only (P|S)SUBSCRIBE / (P|S)UNSUBSCRIBE / PING / QUIT / RESET are allowed in this context");
+            encode_error(&c.client->write_buffer,formatError(c.command->type));
             return;
         }
         if(c.command->type == CommandType::SUBSCRIBE)
