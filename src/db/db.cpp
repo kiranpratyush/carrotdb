@@ -97,7 +97,7 @@ namespace REDIS_NAMESPACE
                 return;
             }
         }
-        if(c.client->isClientOnPubSub())
+        if (c.client->isClientOnPubSub())
         {
             handlePubSub(c);
             return;
@@ -112,7 +112,14 @@ namespace REDIS_NAMESPACE
 
     void DB::handle_ping(ClientContext &c)
     {
-        encode_simple_string(&c.client->write_buffer, "PONG");
+        if (c.client->isClientOnPubSub())
+        {
+            encode_bulk_string(&c.client->write_buffer, "PONG");
+        }
+        else
+        {
+            encode_simple_string(&c.client->write_buffer, "PONG");
+        }
         c.current_write_position = 0;
     }
 
