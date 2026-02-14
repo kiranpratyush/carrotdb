@@ -41,7 +41,9 @@ namespace REDIS_NAMESPACE
             handleSubscribe(c);
         }   
         else{
+            encode_array_header(&c.client->write_buffer,2);
             call(c,*c.command.get());
+            encode_bulk_string(&c.client->write_buffer,"");
         }
     }
 
