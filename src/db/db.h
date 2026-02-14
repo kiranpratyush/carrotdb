@@ -23,8 +23,7 @@ namespace REDIS_NAMESPACE
         void execute(ClientContext &context, ServerConfig *serverConfig = nullptr);
         std::vector<int> check_and_expire_blocked_clients();
         int get_next_timeout_ms();
-
-        // Direct key-value storage functions (used by RDB parser)
+        /*Direct set and set With Expiry is set by RDB*/
         void set(const std::string &key, const std::string &value);
         void setWithExpiry(const std::string &key, const std::string &value, uint64_t expiryTimestampMs);
 
@@ -34,6 +33,7 @@ namespace REDIS_NAMESPACE
         std::unordered_map<std::string, std::queue<BlockedClient>> blocked_keys{};
         std::unordered_map<std::string, std::queue<BlockedXreadClient>> blocked_xread_keys{};
         std::unordered_map<std::string, std::vector<OngoingTransactionClient>> watching_keys{};
+        std::unordered_map<std::string,std::vector<std::weak_ptr<Client>>> pubsub_clients{};
 
         void call(ClientContext &context, Command &c);
         void handle_ping(ClientContext &context);
@@ -54,6 +54,7 @@ namespace REDIS_NAMESPACE
         void handle_discard(ClientContext &context, const DiscardCommand &cmd);
         void handleGetConfig(ClientContext &context, const ServerConfig *config);
         void handleKeys(ClientContext &context);
+        void handleSubscribe(ClientContext &context);
         void signal_key_ready(const std::string &key, ClientContext &context);
         void handle_blocked_xread_clients(const std::string &key, ClientContext &context);
         void mark_watching_clients_dirty(const std::string &key);

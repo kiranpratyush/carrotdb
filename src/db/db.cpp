@@ -69,6 +69,9 @@ namespace REDIS_NAMESPACE
         case CommandType::KEYS:
             handleKeys(c);
             break;
+        case CommandType::SUBSCRIBE:
+            handleSubscribe(c);
+            break;
         default:
             handle_ping(c);
             break;

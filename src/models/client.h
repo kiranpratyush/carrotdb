@@ -24,6 +24,7 @@ namespace SERVER_NAMESPACE
     {
         const static uint64_t MULTI = (1 << 0);
         const static uint64_t DIRTY = (1 << 1);
+        const static uint64_t PUBSUB = (1<<2);
     };
     struct Client
     {
@@ -33,7 +34,8 @@ namespace SERVER_NAMESPACE
         std::vector<std::unique_ptr<Command>> queued_commands{};
         int fd{};
         bool isslave{};
-        int64_t replica_offset{0}; // Track replica's acknowledged offset (for slaves)
+        int64_t replica_offset{0};
+        uint64_t total_subscribed_channels{0};
 
         Client() = default;
 
@@ -54,9 +56,17 @@ namespace SERVER_NAMESPACE
         {
             return flags && (ClientStates::MULTI);
         }
+        bool isClientOnPubSub()
+        {
+            return flags && (ClientStates::PUBSUB);
+        }
         void setClientDirty()
         {
             flags |= (ClientStates::DIRTY);
+        }
+        void setClientPubSub()
+        {
+            flags|=(ClientStates::PUBSUB);
         }
     };
     struct ClientContext
@@ -68,8 +78,9 @@ namespace SERVER_NAMESPACE
         bool isBlocked{false};
         int unblocked_client_fd{-1};
         CONNECTION_NAMEAPACE::TcpConnection *connection{nullptr};
-        std::unique_ptr<Command> command{nullptr}; // Parsed command (parse once, use everywhere)
-        size_t command_bytes{0};                   // Bytes consumed from read_buffer for this command
+        std::unique_ptr<Command> command{nullptr};
+        size_t command_bytes{0};
+        std::vector<std::weak_ptr<Client>> ready_to_write_clients{};
 
         ClientContext(std::shared_ptr<Client> client, int fd, CONNECTION_NAMEAPACE::TcpConnection *conn = nullptr)
             : client{client}, client_fd{fd}, connection{conn}

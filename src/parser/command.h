@@ -32,7 +32,8 @@ namespace REDIS_NAMESPACE
         PSYNC,
         WAIT,
         GETCONFIG,
-        KEYS
+        KEYS,
+        SUBSCRIBE
     };
 
     // Base command structure
@@ -45,6 +46,21 @@ namespace REDIS_NAMESPACE
         virtual bool is_write_command() const = 0;
         virtual std::string to_resp() const = 0;
     };
+
+    struct SubscribeCommand : public Command
+    {
+        std::string channel_name;
+        SubscribeCommand() { type = CommandType::SUBSCRIBE; }
+        bool is_write_command() const override
+        {
+            return false;
+        }
+        std::string to_resp() const override
+        {
+            return "";
+        }
+    };
+
     struct UnknowCommand : public Command
     {
         bool is_write_command() const override

@@ -78,6 +78,8 @@ namespace REDIS_NAMESPACE
             cmd = parseGetConfigCommand(c, total_commands - 1);
         else if (is_equal(cmd_name, "KEYS"))
             cmd = parseKeysCommand(c, total_commands - 1);
+        else if (is_equal(cmd_name,"SUBSCRIBE"))
+            cmd = parseSubScribeCommand(c,total_commands-1);
         else
         {
             cmd = std::make_unique<UnknowCommand>();
@@ -693,6 +695,17 @@ namespace REDIS_NAMESPACE
         std::string_view parameter{c.client->read_buffer.data() + parameterToken.start_pos, parameterToken.end_pos - parameterToken.start_pos + 1};
         keysCommand->pattern = parameter;
         return keysCommand;
+    }
+    std::unique_ptr<Command> CommandParser::parseSubScribeCommand(ClientContext &c,int total_commands)
+    {
+        auto unknownCommand = std::make_unique<UnknowCommand>();
+        auto subScribeCommand = std::make_unique<SubscribeCommand>();
+        ParsedToken channelNameToken = Parser::Parse(c);
+        if(channelNameToken.type != ParsedToken::Type::BULK_STRING)
+            return unknownCommand;
+        std::string_view channel{c.client->read_buffer.data()+channelNameToken.start_pos,channelNameToken.end_pos-channelNameToken.start_pos+1};
+        subScribeCommand->channel_name = channel;
+        return subScribeCommand;
     }
 
 }

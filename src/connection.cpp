@@ -93,7 +93,6 @@ namespace CONNECTION_NAMEAPACE
 
     void TcpConnection::flush()
     {
-        // Enable write events if buffer has data
         if (!client->write_buffer.empty())
         {
             eventloop.update_event_handler(this, READ_EVENT | WRITE_EVENT);
