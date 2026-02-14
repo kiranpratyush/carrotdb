@@ -10,7 +10,7 @@ namespace REDIS_NAMESPACE
         c.client->total_subscribed_channels+=1;
         auto write_buffer = &c.client->write_buffer;
         encode_array_header(write_buffer,3);
-        encode_bulk_string(write_buffer,"SUBSCRIBE");
+        encode_bulk_string(write_buffer,"subscribe");
         encode_bulk_string(write_buffer,command->channel_name);
         encode_integer(write_buffer,c.client->total_subscribed_channels);
         c.current_write_position=0;
