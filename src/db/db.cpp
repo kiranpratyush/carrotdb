@@ -97,6 +97,11 @@ namespace REDIS_NAMESPACE
                 return;
             }
         }
+        if(c.client->isClientOnPubSub())
+        {
+            handlePubSub(c);
+            return;
+        }
         if (c.command->type == CommandType::GETCONFIG)
         {
             handleGetConfig(c, serverConfig);
