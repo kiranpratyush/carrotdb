@@ -24,7 +24,7 @@ namespace SERVER_NAMESPACE
     {
         const static uint64_t MULTI = (1 << 0);
         const static uint64_t DIRTY = (1 << 1);
-        const static uint64_t PUBSUB = (1<<2);
+        const static uint64_t PUBSUB = (1<< 2);
     };
     struct Client
     {
@@ -54,11 +54,11 @@ namespace SERVER_NAMESPACE
         }
         bool isClientOnTransaction()
         {
-            return flags && (ClientStates::MULTI);
+            return flags & (ClientStates::MULTI);
         }
         bool isClientOnPubSub()
         {
-            return flags && (ClientStates::PUBSUB);
+            return flags & (ClientStates::PUBSUB);
         }
         void setClientDirty()
         {
