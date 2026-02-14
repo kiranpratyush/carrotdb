@@ -114,7 +114,7 @@ namespace REDIS_NAMESPACE
     {
         if (c.client->isClientOnPubSub())
         {
-            encode_bulk_string(&c.client->write_buffer, "PONG");
+            encode_bulk_string(&c.client->write_buffer, "pong");
         }
         else
         {
