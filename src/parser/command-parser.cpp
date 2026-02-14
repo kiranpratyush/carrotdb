@@ -80,6 +80,8 @@ namespace REDIS_NAMESPACE
             cmd = parseKeysCommand(c, total_commands - 1);
         else if (is_equal(cmd_name,"SUBSCRIBE"))
             cmd = parseSubScribeCommand(c,total_commands-1);
+        else if (is_equal(cmd_name,"PUBLISH"))
+            cmd = parsePublishCommand(c,total_commands-1);
         else
         {
             cmd = std::make_unique<UnknowCommand>();
@@ -706,6 +708,22 @@ namespace REDIS_NAMESPACE
         std::string_view channel{c.client->read_buffer.data()+channelNameToken.start_pos,channelNameToken.end_pos-channelNameToken.start_pos+1};
         subScribeCommand->channel_name = channel;
         return subScribeCommand;
+    }
+    std::unique_ptr<Command> CommandParser::parsePublishCommand(ClientContext &c,int total_commands)
+    {
+        auto unknownCommand = std::make_unique<UnknowCommand>();
+        auto publishCommand = std::make_unique<PublishCommand>();
+        ParsedToken channelNameToken = Parser::Parse(c);
+        if(channelNameToken.type != ParsedToken::Type::BULK_STRING)
+            return unknownCommand;
+        std::string_view channel{c.client->read_buffer.data()+channelNameToken.start_pos,channelNameToken.end_pos-channelNameToken.start_pos+1};
+        ParsedToken messageNameToken = Parser::Parse(c);
+        if(messageNameToken.type != ParsedToken::Type::BULK_STRING)
+            return unknownCommand;
+        std::string_view message{c.client->read_buffer.data()+messageNameToken.start_pos,messageNameToken.end_pos-messageNameToken.start_pos+1};
+        publishCommand->channel_name = channel;
+        publishCommand->message = message;
+        return publishCommand;
     }
 
 }

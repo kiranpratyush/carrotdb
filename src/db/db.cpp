@@ -72,6 +72,9 @@ namespace REDIS_NAMESPACE
         case CommandType::SUBSCRIBE:
             handleSubscribe(c);
             break;
+        case CommandType::PUBLISH:
+            handlePublish(c);
+            break;
         default:
             handle_ping(c);
             break;

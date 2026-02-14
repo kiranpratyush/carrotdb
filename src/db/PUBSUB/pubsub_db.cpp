@@ -13,6 +13,26 @@ namespace REDIS_NAMESPACE
         return "Can't execute '"+ commandTypeToString(type)+"': only (P|S)SUBSCRIBE / (P|S)UNSUBSCRIBE / PING / QUIT / RESET are allowed in this context";
     }
 
+    void DB::handlePublish(ClientContext &c)
+    {
+        PublishCommand *command = static_cast<PublishCommand*>(c.command.get());
+        auto subscribed_clients = pubsub_clients[command->channel_name];
+        int active_subscribed_clients = 0;
+        for(auto client:subscribed_clients)
+        {
+            auto clientPtr = client.lock();
+            if(clientPtr)
+            {   active_subscribed_clients++;
+                auto *write_buffer = &clientPtr->write_buffer;
+                encode_array_header(write_buffer,3);
+                encode_bulk_string(write_buffer,"message");
+                encode_bulk_string(write_buffer,command->channel_name);
+                encode_bulk_string(write_buffer,command->message);
+            }
+            c.ready_to_write_clients.push_back(client);
+        }
+        encode_integer(&c.client->write_buffer,active_subscribed_clients);
+    }
 
     void DB::handleSubscribe(ClientContext &c)
     {

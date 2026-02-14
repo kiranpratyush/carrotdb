@@ -144,6 +144,18 @@ namespace SERVER_NAMESPACE
                 unblocked_conn->flush();
             }
         }
+        for(auto client:client_context.ready_to_write_clients)
+        {
+            auto clientPtr = client.lock();
+            if(clientPtr)
+            {
+                auto conn = active_connections[clientPtr->fd];
+                if(conn)
+                {
+                    conn->flush();
+                }
+            }
+        }
     }
 
     void Server::handle_expired_blocked_clients()

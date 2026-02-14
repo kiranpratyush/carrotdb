@@ -33,7 +33,8 @@ namespace REDIS_NAMESPACE
         WAIT,
         GETCONFIG,
         KEYS,
-        SUBSCRIBE
+        SUBSCRIBE,
+        PUBLISH
     };
 
     // Base command structure
@@ -57,6 +58,18 @@ namespace REDIS_NAMESPACE
         }
         std::string to_resp() const override
         {
+            return "";
+        }
+    };
+    struct PublishCommand: public Command {
+        std::string channel_name;
+        std::string message;
+        PublishCommand() {type = CommandType::PUBLISH;}
+
+        bool is_write_command() const override {
+            return false;
+        }
+        std::string to_resp() const override {
             return "";
         }
     };
@@ -588,7 +601,7 @@ namespace REDIS_NAMESPACE
             return "";
         }
     };
-    
+
     inline std::string commandTypeToString(CommandType type)
     {
         switch (type)
