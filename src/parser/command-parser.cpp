@@ -82,6 +82,8 @@ namespace REDIS_NAMESPACE
             cmd = parseSubScribeCommand(c,total_commands-1);
         else if (is_equal(cmd_name,"PUBLISH"))
             cmd = parsePublishCommand(c,total_commands-1);
+        else if (is_equal(cmd_name,"UNSUBSCRIBE"))
+            cmd = parseUnsubscribeCommand(c,total_commands-1);
         else
         {
             cmd = std::make_unique<UnknowCommand>();
@@ -724,6 +726,17 @@ namespace REDIS_NAMESPACE
         publishCommand->channel_name = channel;
         publishCommand->message = message;
         return publishCommand;
+    }
+    std::unique_ptr<Command> CommandParser::parseUnsubscribeCommand(ClientContext &c,int total_commands)
+    {
+        auto unknownCommand = std::make_unique<UnknowCommand>();
+        auto unsubScribeCommand = std::make_unique<UnSubscribeCommand>();
+        ParsedToken channelNameToken = Parser::Parse(c);
+        if(channelNameToken.type != ParsedToken::Type::BULK_STRING)
+            return unknownCommand;
+        std::string_view channel{c.client->read_buffer.data()+channelNameToken.start_pos,channelNameToken.end_pos-channelNameToken.start_pos+1};
+        unsubScribeCommand->channel_name = channel;
+        return unsubScribeCommand;
     }
 
 }

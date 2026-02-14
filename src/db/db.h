@@ -7,6 +7,7 @@
 #include "models/server-model.h"
 #include "models/client.h"
 #include "models/redisObject.h"
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <queue>
@@ -55,6 +56,7 @@ namespace REDIS_NAMESPACE
         void handleGetConfig(ClientContext &context, const ServerConfig *config);
         void handleKeys(ClientContext &context);
         void handleSubscribe(ClientContext &context);
+        void handleUnSubscribe(ClientContext &context);
         void handlePublish(ClientContext &context);
         void handlePubSub(ClientContext &context);
         void signal_key_ready(const std::string &key, ClientContext &context);

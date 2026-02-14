@@ -34,7 +34,8 @@ namespace REDIS_NAMESPACE
         GETCONFIG,
         KEYS,
         SUBSCRIBE,
-        PUBLISH
+        PUBLISH,
+        UNSUBSCRIBE
     };
 
     // Base command structure
@@ -46,6 +47,18 @@ namespace REDIS_NAMESPACE
         virtual ~Command() = default;
         virtual bool is_write_command() const = 0;
         virtual std::string to_resp() const = 0;
+    };
+
+    struct UnSubscribeCommand: public Command {
+        std::string channel_name;
+        UnSubscribeCommand() {type = CommandType::UNSUBSCRIBE;}
+        bool is_write_command() const override{
+            return false;
+        }
+        std::string to_resp() const override {
+            return "";
+        }
+
     };
 
     struct SubscribeCommand : public Command
@@ -658,6 +671,8 @@ namespace REDIS_NAMESPACE
             return "keys";
         case CommandType::SUBSCRIBE:
             return "subscribe";
+        case CommandType::UNSUBSCRIBE:
+            return "unsubscribe";
         default:
             return "unknown";
         }

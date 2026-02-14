@@ -5,7 +5,8 @@ namespace REDIS_NAMESPACE
 {
     static std::set<CommandType>allowedPubSubCommands{
         CommandType::SUBSCRIBE,
-        CommandType::PING
+        CommandType::PING,
+        CommandType::UNSUBSCRIBE
     };
 
     static std::string formatError(CommandType type)
@@ -34,6 +35,28 @@ namespace REDIS_NAMESPACE
         encode_integer(&c.client->write_buffer,active_subscribed_clients);
     }
 
+    /*TODO This is inefficient o(n) TODO optimize it*/
+    void DB::handleUnSubscribe(ClientContext &c)
+    {
+        UnSubscribeCommand *command = static_cast<UnSubscribeCommand*>(c.command.get());
+        auto *subscribedClients = &pubsub_clients[command->channel_name];
+        for(auto it = subscribedClients->begin();it!=subscribedClients->end();it++)
+        {
+            auto client = (*it).lock();
+            if(client->fd == c.client->fd)
+            {
+                subscribedClients->erase(it);
+                c.client->total_subscribed_channels--;
+                break;
+            }
+
+        }
+        encode_array_header(&c.client->write_buffer,3);
+        encode_bulk_string(&c.client->write_buffer,"unsubscribe");
+        encode_bulk_string(&c.client->write_buffer,command->channel_name);
+        encode_integer(&c.client->write_buffer,c.client->total_subscribed_channels);
+    }
+
     void DB::handleSubscribe(ClientContext &c)
     {
         SubscribeCommand *command = static_cast<SubscribeCommand*>(c.command.get());
@@ -59,7 +82,11 @@ namespace REDIS_NAMESPACE
         if(c.command->type == CommandType::SUBSCRIBE)
         {
             handleSubscribe(c);
-        }   
+        } 
+        else if(c.command->type == CommandType::UNSUBSCRIBE)
+        {
+            handleUnSubscribe(c);
+        }  
         else{
             encode_array_header(&c.client->write_buffer,2);
             call(c,*c.command.get());
