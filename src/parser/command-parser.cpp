@@ -86,6 +86,8 @@ namespace REDIS_NAMESPACE
             cmd = parseUnsubscribeCommand(c,total_commands-1);
         else if (is_equal(cmd_name, "ZADD"))
             cmd = parseZaddCommand(c, total_commands - 1);
+        else if (is_equal(cmd_name, "ZRANK"))
+            cmd = parseZrankCommand(c);
         else
         {
             cmd = std::make_unique<UnknowCommand>();
@@ -782,6 +784,25 @@ namespace REDIS_NAMESPACE
             total_commands -= 2;
         }
 
+        return cmd;
+    }
+
+    std::unique_ptr<Command> CommandParser::parseZrankCommand(ClientContext &c)
+    {
+        ParsedToken key_token = Parser::Parse(c);
+        if (key_token.type != ParsedToken::Type::BULK_STRING)
+            return std::make_unique<UnknowCommand>();
+
+        ParsedToken member_token = Parser::Parse(c);
+        if (member_token.type != ParsedToken::Type::BULK_STRING)
+            return std::make_unique<UnknowCommand>();
+
+        std::string_view read_buffer = c.client->read_buffer;
+        auto cmd = std::make_unique<ZrankCommand>();
+        cmd->key = std::string{read_buffer.data() + key_token.start_pos,
+                               key_token.end_pos - key_token.start_pos + 1};
+        cmd->member = std::string{read_buffer.data() + member_token.start_pos,
+                                  member_token.end_pos - member_token.start_pos + 1};
         return cmd;
     }
 

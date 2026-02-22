@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <set>
 #include <string>
+#include <optional>
 namespace REDIS_NAMESPACE
 {
 
@@ -14,7 +15,8 @@ namespace REDIS_NAMESPACE
         size_t length{0};
 
     public:
-        bool insert(std::string key,double score);
+        bool insert(std::string key, double score);
+        std::optional<size_t> rank(const std::string& member) const;
         size_t size() const;
     };
 

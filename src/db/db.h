@@ -60,6 +60,7 @@ namespace REDIS_NAMESPACE
         void handlePublish(ClientContext &context);
         void handlePubSub(ClientContext &context);
         void handle_zadd(ClientContext &context);
+        void handle_zrank(ClientContext &context);
         void signal_key_ready(const std::string &key, ClientContext &context);
         void handle_blocked_xread_clients(const std::string &key, ClientContext &context);
         void mark_watching_clients_dirty(const std::string &key);

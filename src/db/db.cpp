@@ -78,6 +78,9 @@ namespace REDIS_NAMESPACE
         case CommandType::ZADD:
             handle_zadd(c);
             break;
+        case CommandType::ZRANK:
+            handle_zrank(c);
+            break;
         default:
             handle_ping(c);
             break;

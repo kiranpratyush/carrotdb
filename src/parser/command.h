@@ -36,7 +36,8 @@ namespace REDIS_NAMESPACE
         SUBSCRIBE,
         PUBLISH,
         UNSUBSCRIBE,
-        ZADD
+        ZADD,
+        ZRANK
     };
 
     // Base command structure
@@ -639,6 +640,23 @@ namespace REDIS_NAMESPACE
         }
     };
 
+    struct ZrankCommand : public Command
+    {
+        ZrankCommand() { type = CommandType::ZRANK; }
+        std::string member{};
+        bool is_write_command() const override
+        {
+            return false;
+        }
+        std::string to_resp() const override
+        {
+            std::string cmd = "*3\r\n$5\r\nZRANK\r\n";
+            cmd += "$" + std::to_string(key.length()) + "\r\n" + key + "\r\n";
+            cmd += "$" + std::to_string(member.length()) + "\r\n" + member + "\r\n";
+            return cmd;
+        }
+    };
+
     inline std::string commandTypeToString(CommandType type)
     {
         switch (type)
@@ -699,6 +717,8 @@ namespace REDIS_NAMESPACE
             return "unsubscribe";
         case CommandType::ZADD:
             return "zadd";
+        case CommandType::ZRANK:
+            return "zrank";
         default:
             return "unknown";
         }
