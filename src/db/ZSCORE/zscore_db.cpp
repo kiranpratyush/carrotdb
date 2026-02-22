@@ -1,4 +1,5 @@
 #include "db/db.h"
+#include <format>
 #include "utils/utils.h"
 #include "parser/command.h"
 
@@ -38,7 +39,7 @@ namespace REDIS_NAMESPACE
 
         if (score.has_value())
         {
-            encode_bulk_string(&c.client->write_buffer, std::to_string(score.value()));
+            encode_bulk_string(&c.client->write_buffer, std::format("{:.14f}", score.value()));
         }
         else
         {
