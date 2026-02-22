@@ -90,6 +90,8 @@ namespace REDIS_NAMESPACE
             cmd = parseZrankCommand(c);
         else if (is_equal(cmd_name, "ZRANGE"))
             cmd = parseZrangeCommand(c);
+        else if (is_equal(cmd_name, "ZCARD"))
+            cmd = parseZcardCommand(c);
         else
         {
             cmd = std::make_unique<UnknowCommand>();
@@ -836,6 +838,19 @@ namespace REDIS_NAMESPACE
             !convert_string_to_number(stop_str, &cmd->stop))
             return std::make_unique<UnknowCommand>();
 
+        return cmd;
+    }
+
+    std::unique_ptr<Command> CommandParser::parseZcardCommand(ClientContext &c)
+    {
+        ParsedToken key_token = Parser::Parse(c);
+        if (key_token.type != ParsedToken::Type::BULK_STRING)
+            return std::make_unique<UnknowCommand>();
+
+        std::string_view read_buffer = c.client->read_buffer;
+        auto cmd = std::make_unique<ZcardCommand>();
+        cmd->key = std::string{read_buffer.data() + key_token.start_pos,
+                               key_token.end_pos - key_token.start_pos + 1};
         return cmd;
     }
 

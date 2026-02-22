@@ -43,5 +43,6 @@ namespace REDIS_NAMESPACE
         static std::unique_ptr<Command> parseZaddCommand(ClientContext &c, int total_commands);
         static std::unique_ptr<Command> parseZrankCommand(ClientContext &c);
         static std::unique_ptr<Command> parseZrangeCommand(ClientContext &c);
+        static std::unique_ptr<Command> parseZcardCommand(ClientContext &c);
     };
 }
