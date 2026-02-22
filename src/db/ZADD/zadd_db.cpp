@@ -39,8 +39,9 @@ namespace REDIS_NAMESPACE
 
         for (const auto &sm : zaddCmd->score_members)
         {
-            sortedSet->insert(sm.second, sm.first);
-            added++;
+            bool wasKeyExisted = sortedSet->insert(sm.second, sm.first);
+            if(!wasKeyExisted)
+                added++;
         }
 
         encode_integer(&c.client->write_buffer, static_cast<long long>(added));

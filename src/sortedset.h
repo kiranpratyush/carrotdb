@@ -14,7 +14,7 @@ namespace REDIS_NAMESPACE
         size_t length{0};
 
     public:
-        void insert(std::string key,double score);
+        bool insert(std::string key,double score);
         size_t size() const;
     };
 
