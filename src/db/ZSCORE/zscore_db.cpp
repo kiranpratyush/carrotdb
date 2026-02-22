@@ -38,20 +38,7 @@ namespace REDIS_NAMESPACE
 
         if (score.has_value())
         {
-            std::string score_str = std::to_string(score.value());
-            if (score_str.find('.') != std::string::npos)
-            {
-                size_t last_non_zero = score_str.find_last_not_of('0');
-                if (last_non_zero != std::string::npos && score_str[last_non_zero] == '.')
-                {
-                    score_str = score_str.substr(0, last_non_zero);
-                }
-                else if (last_non_zero != std::string::npos)
-                {
-                    score_str = score_str.substr(0, last_non_zero + 1);
-                }
-            }
-            encode_bulk_string(&c.client->write_buffer, score_str);
+            encode_bulk_string(&c.client->write_buffer, std::to_string(score.value()));
         }
         else
         {
