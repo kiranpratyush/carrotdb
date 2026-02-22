@@ -22,6 +22,20 @@ bool SortedSet::insert(std::string key,double score)
     return alreadyExists;
 }
 
+bool SortedSet::remove(const std::string& member)
+{
+    auto it = hashMap.find(member);
+    if (it == hashMap.end()) {
+        return false;
+    }
+    
+    double score = it->second;
+    hashMap.erase(it);
+    sets.erase({score, member});
+    length--;
+    return true;
+}
+
 std::optional<size_t> SortedSet::rank(const std::string& member) const
 {
     auto it = hashMap.find(member);

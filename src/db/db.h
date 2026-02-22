@@ -64,6 +64,7 @@ namespace REDIS_NAMESPACE
         void handle_zrange(ClientContext &context);
         void handle_zcard(ClientContext &context);
         void handle_zscore(ClientContext &context);
+        void handle_zrem(ClientContext &context);
         void signal_key_ready(const std::string &key, ClientContext &context);
         void handle_blocked_xread_clients(const std::string &key, ClientContext &context);
         void mark_watching_clients_dirty(const std::string &key);

@@ -18,6 +18,7 @@ namespace REDIS_NAMESPACE
 
     public:
         bool insert(std::string key, double score);
+        bool remove(const std::string& member);
         std::optional<size_t> rank(const std::string& member) const;
         std::optional<double> score(const std::string& member) const;
         std::vector<std::string> range(int64_t start, int64_t stop) const;

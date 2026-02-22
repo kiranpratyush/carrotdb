@@ -90,6 +90,9 @@ namespace REDIS_NAMESPACE
         case CommandType::ZSCORE:
             handle_zscore(c);
             break;
+        case CommandType::ZREM:
+            handle_zrem(c);
+            break;
         default:
             handle_ping(c);
             break;
