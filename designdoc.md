@@ -12,4 +12,4 @@ write(std::vector<unsigned char>):appends to the file
 ```
 
 #TODO
-Fix: Immediate RDB file and with ReplConf is creating issue ( timing)
+Fix: Immediate RDB file and with ReplConf is creating issue ( timing).
