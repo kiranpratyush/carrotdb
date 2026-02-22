@@ -1,5 +1,6 @@
 #include "sortedset.h"
 #include <algorithm>
+#include <vector>
 
 namespace REDIS_NAMESPACE {
 
@@ -40,5 +41,42 @@ std::optional<size_t> SortedSet::rank(const std::string& member) const
 size_t SortedSet::size() const
 {
     return length;
+}
+
+std::vector<std::string> SortedSet::range(int64_t start, int64_t stop) const
+{
+    std::vector<std::string> result;
+    size_t sz = sets.size();
+    
+    if (sz == 0) {
+        return result;
+    }
+    
+    if (start < 0) {
+        start = static_cast<int64_t>(sz) + start;
+    }
+    if (stop < 0) {
+        stop = static_cast<int64_t>(sz) + stop;
+    }
+    
+    if (start < 0) {
+        start = 0;
+    }
+    if (stop >= static_cast<int64_t>(sz)) {
+        stop = static_cast<int64_t>(sz) - 1;
+    }
+    
+    if (start > stop) {
+        return result;
+    }
+    
+    auto it = sets.begin();
+    std::advance(it, start);
+    
+    for (int64_t i = start; i <= stop && it != sets.end(); ++i, ++it) {
+        result.push_back(it->second);
+    }
+    
+    return result;
 }
 }

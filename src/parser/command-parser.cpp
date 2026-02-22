@@ -88,6 +88,8 @@ namespace REDIS_NAMESPACE
             cmd = parseZaddCommand(c, total_commands - 1);
         else if (is_equal(cmd_name, "ZRANK"))
             cmd = parseZrankCommand(c);
+        else if (is_equal(cmd_name, "ZRANGE"))
+            cmd = parseZrangeCommand(c);
         else
         {
             cmd = std::make_unique<UnknowCommand>();
@@ -803,6 +805,37 @@ namespace REDIS_NAMESPACE
                                key_token.end_pos - key_token.start_pos + 1};
         cmd->member = std::string{read_buffer.data() + member_token.start_pos,
                                   member_token.end_pos - member_token.start_pos + 1};
+        return cmd;
+    }
+
+    std::unique_ptr<Command> CommandParser::parseZrangeCommand(ClientContext &c)
+    {
+        ParsedToken key_token = Parser::Parse(c);
+        if (key_token.type != ParsedToken::Type::BULK_STRING)
+            return std::make_unique<UnknowCommand>();
+
+        ParsedToken start_token = Parser::Parse(c);
+        if (start_token.type != ParsedToken::Type::BULK_STRING)
+            return std::make_unique<UnknowCommand>();
+
+        ParsedToken stop_token = Parser::Parse(c);
+        if (stop_token.type != ParsedToken::Type::BULK_STRING)
+            return std::make_unique<UnknowCommand>();
+
+        std::string_view read_buffer = c.client->read_buffer;
+        auto cmd = std::make_unique<ZrangeCommand>();
+        cmd->key = std::string{read_buffer.data() + key_token.start_pos,
+                               key_token.end_pos - key_token.start_pos + 1};
+
+        std::string_view start_str{read_buffer.data() + start_token.start_pos,
+                                    start_token.end_pos - start_token.start_pos + 1};
+        std::string_view stop_str{read_buffer.data() + stop_token.start_pos,
+                                   stop_token.end_pos - stop_token.start_pos + 1};
+
+        if (!convert_string_to_number(start_str, &cmd->start) ||
+            !convert_string_to_number(stop_str, &cmd->stop))
+            return std::make_unique<UnknowCommand>();
+
         return cmd;
     }
 
