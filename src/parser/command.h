@@ -35,7 +35,8 @@ namespace REDIS_NAMESPACE
         KEYS,
         SUBSCRIBE,
         PUBLISH,
-        UNSUBSCRIBE
+        UNSUBSCRIBE,
+        ZADD
     };
 
     // Base command structure
@@ -59,6 +60,29 @@ namespace REDIS_NAMESPACE
             return "";
         }
 
+    };
+
+    struct ZaddCommand : public Command
+    {
+        ZaddCommand() { type = CommandType::ZADD; }
+        std::vector<std::pair<double, std::string>> score_members{};
+        bool is_write_command() const override
+        {
+            return true;
+        }
+        std::string to_resp() const override
+        {
+            std::string cmd = "*" + std::to_string(2 + score_members.size() * 2) + "\r\n";
+            cmd += "$4\r\nZADD\r\n";
+            cmd += "$" + std::to_string(key.length()) + "\r\n" + key + "\r\n";
+            for (const auto &sm : score_members)
+            {
+                std::string score_str = std::to_string(sm.first);
+                cmd += "$" + std::to_string(score_str.length()) + "\r\n" + score_str + "\r\n";
+                cmd += "$" + std::to_string(sm.second.length()) + "\r\n" + sm.second + "\r\n";
+            }
+            return cmd;
+        }
     };
 
     struct SubscribeCommand : public Command
@@ -673,6 +697,8 @@ namespace REDIS_NAMESPACE
             return "subscribe";
         case CommandType::UNSUBSCRIBE:
             return "unsubscribe";
+        case CommandType::ZADD:
+            return "zadd";
         default:
             return "unknown";
         }

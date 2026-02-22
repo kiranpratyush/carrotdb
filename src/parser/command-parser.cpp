@@ -84,6 +84,8 @@ namespace REDIS_NAMESPACE
             cmd = parsePublishCommand(c,total_commands-1);
         else if (is_equal(cmd_name,"UNSUBSCRIBE"))
             cmd = parseUnsubscribeCommand(c,total_commands-1);
+        else if (is_equal(cmd_name, "ZADD"))
+            cmd = parseZaddCommand(c, total_commands - 1);
         else
         {
             cmd = std::make_unique<UnknowCommand>();
@@ -737,6 +739,50 @@ namespace REDIS_NAMESPACE
         std::string_view channel{c.client->read_buffer.data()+channelNameToken.start_pos,channelNameToken.end_pos-channelNameToken.start_pos+1};
         unsubScribeCommand->channel_name = channel;
         return unsubScribeCommand;
+    }
+
+    std::unique_ptr<Command> CommandParser::parseZaddCommand(ClientContext &c, int total_commands)
+    {
+        ParsedToken key_token = Parser::Parse(c);
+        if (key_token.type != ParsedToken::Type::BULK_STRING)
+            return std::make_unique<UnknowCommand>();
+
+        std::string_view read_buffer = c.client->read_buffer;
+        auto cmd = std::make_unique<ZaddCommand>();
+        cmd->key = std::string{read_buffer.data() + key_token.start_pos,
+                               key_token.end_pos - key_token.start_pos + 1};
+
+        total_commands--;
+
+        while (total_commands >= 2)
+        {
+            ParsedToken score_token = Parser::Parse(c);
+            ParsedToken member_token = Parser::Parse(c);
+
+            if (score_token.type != ParsedToken::Type::BULK_STRING ||
+                member_token.type != ParsedToken::Type::BULK_STRING)
+                break;
+
+            std::string_view score_str{read_buffer.data() + score_token.start_pos,
+                                        score_token.end_pos - score_token.start_pos + 1};
+            std::string member{read_buffer.data() + member_token.start_pos,
+                               member_token.end_pos - member_token.start_pos + 1};
+
+            double score = 0.0;
+            try
+            {
+                score = std::stod(std::string(score_str));
+            }
+            catch (...)
+            {
+                score = 0.0;
+            }
+
+            cmd->score_members.push_back({score, member});
+            total_commands -= 2;
+        }
+
+        return cmd;
     }
 
 }

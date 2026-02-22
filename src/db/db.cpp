@@ -75,6 +75,9 @@ namespace REDIS_NAMESPACE
         case CommandType::PUBLISH:
             handlePublish(c);
             break;
+        case CommandType::ZADD:
+            handle_zadd(c);
+            break;
         default:
             handle_ping(c);
             break;
