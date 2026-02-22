@@ -87,6 +87,9 @@ namespace REDIS_NAMESPACE
         case CommandType::ZCARD:
             handle_zcard(c);
             break;
+        case CommandType::ZSCORE:
+            handle_zscore(c);
+            break;
         default:
             handle_ping(c);
             break;

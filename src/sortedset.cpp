@@ -43,6 +43,15 @@ size_t SortedSet::size() const
     return length;
 }
 
+std::optional<double> SortedSet::score(const std::string& member) const
+{
+    auto it = hashMap.find(member);
+    if (it == hashMap.end()) {
+        return std::nullopt;
+    }
+    return it->second;
+}
+
 std::vector<std::string> SortedSet::range(int64_t start, int64_t stop) const
 {
     std::vector<std::string> result;

@@ -39,7 +39,8 @@ namespace REDIS_NAMESPACE
         ZADD,
         ZRANK,
         ZRANGE,
-        ZCARD
+        ZCARD,
+        ZSCORE
     };
 
     // Base command structure
@@ -695,6 +696,23 @@ namespace REDIS_NAMESPACE
         }
     };
 
+    struct ZscoreCommand : public Command
+    {
+        ZscoreCommand() { type = CommandType::ZSCORE; }
+        std::string member{};
+        bool is_write_command() const override
+        {
+            return false;
+        }
+        std::string to_resp() const override
+        {
+            std::string cmd = "*3\r\n$6\r\nZSCORE\r\n";
+            cmd += "$" + std::to_string(key.length()) + "\r\n" + key + "\r\n";
+            cmd += "$" + std::to_string(member.length()) + "\r\n" + member + "\r\n";
+            return cmd;
+        }
+    };
+
     inline std::string commandTypeToString(CommandType type)
     {
         switch (type)
@@ -761,6 +779,8 @@ namespace REDIS_NAMESPACE
             return "zrange";
         case CommandType::ZCARD:
             return "zcard";
+        case CommandType::ZSCORE:
+            return "zscore";
         default:
             return "unknown";
         }
