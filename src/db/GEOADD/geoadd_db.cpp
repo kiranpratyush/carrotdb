@@ -1,3 +1,4 @@
+#include <cstdio>
 #include "db/db.h"
 #include "utils/utils.h"
 #include "parser/command.h"
@@ -14,6 +15,18 @@ namespace REDIS_NAMESPACE
         }
 
         GeoAddCommand *geoCmd = static_cast<GeoAddCommand *>(c.command.get());
+
+        if (geoCmd->invalidLatLon)
+        {
+            char buf[128];
+            std::snprintf(buf, sizeof(buf),
+                          "invalid longitude,latitude pair %f,%f",
+                          geoCmd->longitude, geoCmd->latitude);
+            encode_error(&c.client->write_buffer, buf);
+            c.current_write_position = 0;
+            return;
+        }
+
         const std::string &key = geoCmd->key;
 
         auto it = store.find(key);

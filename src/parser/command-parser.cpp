@@ -939,7 +939,7 @@ namespace REDIS_NAMESPACE
             }
             catch (...)
             {
-                cmd->longitude = 0.0;
+                cmd->invalidLatLon = true;
             }
             try
             {
@@ -947,7 +947,14 @@ namespace REDIS_NAMESPACE
             }
             catch (...)
             {
-                cmd->latitude = 0.0;
+                cmd->invalidLatLon = true;
+            }
+
+            if (!cmd->invalidLatLon &&
+                (cmd->longitude < GeoAddCommand::minAllowedLon || cmd->longitude > GeoAddCommand::maxAllowedLon ||
+                 cmd->latitude  < GeoAddCommand::minAllowedLat || cmd->latitude  > GeoAddCommand::maxAllowedLat))
+            {
+                cmd->invalidLatLon = true;
             }
 
             cmd->member = std::string{read_buffer.data() + member_token.start_pos,

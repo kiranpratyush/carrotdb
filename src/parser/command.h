@@ -72,10 +72,16 @@ namespace REDIS_NAMESPACE
 
     struct GeoAddCommand : public Command
     {
+        static constexpr double minAllowedLat = -85.05112878;
+        static constexpr double maxAllowedLat =  85.05112878;
+        static constexpr double minAllowedLon = -180.0;
+        static constexpr double maxAllowedLon =  180.0;
+
         GeoAddCommand() { type = CommandType::GEOADD; }
-        double longitude;
-        double latitude;
+        double longitude{};
+        double latitude{};
         std::string member;
+        bool invalidLatLon{false};
         bool is_write_command() const override
         {
             return true;
