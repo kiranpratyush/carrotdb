@@ -37,14 +37,15 @@ namespace REDIS_NAMESPACE
         static std::unique_ptr<Command> parseWaitCommand(ClientContext &c, int total_commands);
         static std::unique_ptr<Command> parseGetConfigCommand(ClientContext &c, int total_commands);
         static std::unique_ptr<Command> parseKeysCommand(ClientContext &c, int total_commands);
-        static std::unique_ptr<Command> parseSubScribeCommand(ClientContext &c,int total_commands);
-        static std::unique_ptr<Command> parsePublishCommand(ClientContext &c,int total_commands);
-        static std::unique_ptr<Command> parseUnsubscribeCommand(ClientContext &c,int total_commads);
+        static std::unique_ptr<Command> parseSubScribeCommand(ClientContext &c, int total_commands);
+        static std::unique_ptr<Command> parsePublishCommand(ClientContext &c, int total_commands);
+        static std::unique_ptr<Command> parseUnsubscribeCommand(ClientContext &c, int total_commads);
         static std::unique_ptr<Command> parseZaddCommand(ClientContext &c, int total_commands);
         static std::unique_ptr<Command> parseZrankCommand(ClientContext &c);
         static std::unique_ptr<Command> parseZrangeCommand(ClientContext &c);
         static std::unique_ptr<Command> parseZcardCommand(ClientContext &c);
         static std::unique_ptr<Command> parseZscoreCommand(ClientContext &c);
         static std::unique_ptr<Command> parseZremCommand(ClientContext &c, int total_commands);
+        static std::unique_ptr<Command> parseGeoAddCommand(ClientContext &c, int total_commands);
     };
 }

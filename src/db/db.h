@@ -34,7 +34,7 @@ namespace REDIS_NAMESPACE
         std::unordered_map<std::string, std::queue<BlockedClient>> blocked_keys{};
         std::unordered_map<std::string, std::queue<BlockedXreadClient>> blocked_xread_keys{};
         std::unordered_map<std::string, std::vector<OngoingTransactionClient>> watching_keys{};
-        std::unordered_map<std::string,std::vector<std::weak_ptr<Client>>> pubsub_clients{};
+        std::unordered_map<std::string, std::vector<std::weak_ptr<Client>>> pubsub_clients{};
 
         void call(ClientContext &context, Command &c);
         void handle_ping(ClientContext &context);
@@ -65,6 +65,7 @@ namespace REDIS_NAMESPACE
         void handle_zcard(ClientContext &context);
         void handle_zscore(ClientContext &context);
         void handle_zrem(ClientContext &context);
+        void handle_geoadd(ClientContext &context);
         void signal_key_ready(const std::string &key, ClientContext &context);
         void handle_blocked_xread_clients(const std::string &key, ClientContext &context);
         void mark_watching_clients_dirty(const std::string &key);

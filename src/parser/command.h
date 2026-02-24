@@ -41,7 +41,8 @@ namespace REDIS_NAMESPACE
         ZRANGE,
         ZCARD,
         ZSCORE,
-        ZREM
+        ZREM,
+        GEOADD
     };
 
     // Base command structure
@@ -55,16 +56,42 @@ namespace REDIS_NAMESPACE
         virtual std::string to_resp() const = 0;
     };
 
-    struct UnSubscribeCommand: public Command {
+    struct UnSubscribeCommand : public Command
+    {
         std::string channel_name;
-        UnSubscribeCommand() {type = CommandType::UNSUBSCRIBE;}
-        bool is_write_command() const override{
+        UnSubscribeCommand() { type = CommandType::UNSUBSCRIBE; }
+        bool is_write_command() const override
+        {
             return false;
         }
-        std::string to_resp() const override {
+        std::string to_resp() const override
+        {
             return "";
         }
+    };
 
+    struct GeoAddCommand : public Command
+    {
+        GeoAddCommand() { type = CommandType::GEOADD; }
+        double longitude;
+        double latitude;
+        std::string member;
+        bool is_write_command() const override
+        {
+            return true;
+        }
+        std::string to_resp() const override
+        {
+            std::string cmd = "*5\r\n";
+            cmd += "$6\r\nGEOADD\r\n";
+            cmd += "$" + std::to_string(key.length()) + "\r\n" + key + "\r\n";
+            std::string lon_str = std::to_string(longitude);
+            cmd += "$" + std::to_string(lon_str.length()) + "\r\n" + lon_str + "\r\n";
+            std::string lat_str = std::to_string(latitude);
+            cmd += "$" + std::to_string(lat_str.length()) + "\r\n" + lat_str + "\r\n";
+            cmd += "$" + std::to_string(member.length()) + "\r\n" + member + "\r\n";
+            return cmd;
+        }
     };
 
     struct ZaddCommand : public Command
@@ -103,15 +130,18 @@ namespace REDIS_NAMESPACE
             return "";
         }
     };
-    struct PublishCommand: public Command {
+    struct PublishCommand : public Command
+    {
         std::string channel_name;
         std::string message;
-        PublishCommand() {type = CommandType::PUBLISH;}
+        PublishCommand() { type = CommandType::PUBLISH; }
 
-        bool is_write_command() const override {
+        bool is_write_command() const override
+        {
             return false;
         }
-        std::string to_resp() const override {
+        std::string to_resp() const override
+        {
             return "";
         }
     };

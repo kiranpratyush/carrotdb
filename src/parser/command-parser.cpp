@@ -78,12 +78,12 @@ namespace REDIS_NAMESPACE
             cmd = parseGetConfigCommand(c, total_commands - 1);
         else if (is_equal(cmd_name, "KEYS"))
             cmd = parseKeysCommand(c, total_commands - 1);
-        else if (is_equal(cmd_name,"SUBSCRIBE"))
-            cmd = parseSubScribeCommand(c,total_commands-1);
-        else if (is_equal(cmd_name,"PUBLISH"))
-            cmd = parsePublishCommand(c,total_commands-1);
-        else if (is_equal(cmd_name,"UNSUBSCRIBE"))
-            cmd = parseUnsubscribeCommand(c,total_commands-1);
+        else if (is_equal(cmd_name, "SUBSCRIBE"))
+            cmd = parseSubScribeCommand(c, total_commands - 1);
+        else if (is_equal(cmd_name, "PUBLISH"))
+            cmd = parsePublishCommand(c, total_commands - 1);
+        else if (is_equal(cmd_name, "UNSUBSCRIBE"))
+            cmd = parseUnsubscribeCommand(c, total_commands - 1);
         else if (is_equal(cmd_name, "ZADD"))
             cmd = parseZaddCommand(c, total_commands - 1);
         else if (is_equal(cmd_name, "ZRANK"))
@@ -96,6 +96,8 @@ namespace REDIS_NAMESPACE
             cmd = parseZscoreCommand(c);
         else if (is_equal(cmd_name, "ZREM"))
             cmd = parseZremCommand(c, total_commands - 1);
+        else if (is_equal(cmd_name, "GEOADD"))
+            cmd = parseGeoAddCommand(c, total_commands - 1);
         else
         {
             cmd = std::make_unique<UnknowCommand>();
@@ -712,41 +714,41 @@ namespace REDIS_NAMESPACE
         keysCommand->pattern = parameter;
         return keysCommand;
     }
-    std::unique_ptr<Command> CommandParser::parseSubScribeCommand(ClientContext &c,int total_commands)
+    std::unique_ptr<Command> CommandParser::parseSubScribeCommand(ClientContext &c, int total_commands)
     {
         auto unknownCommand = std::make_unique<UnknowCommand>();
         auto subScribeCommand = std::make_unique<SubscribeCommand>();
         ParsedToken channelNameToken = Parser::Parse(c);
-        if(channelNameToken.type != ParsedToken::Type::BULK_STRING)
+        if (channelNameToken.type != ParsedToken::Type::BULK_STRING)
             return unknownCommand;
-        std::string_view channel{c.client->read_buffer.data()+channelNameToken.start_pos,channelNameToken.end_pos-channelNameToken.start_pos+1};
+        std::string_view channel{c.client->read_buffer.data() + channelNameToken.start_pos, channelNameToken.end_pos - channelNameToken.start_pos + 1};
         subScribeCommand->channel_name = channel;
         return subScribeCommand;
     }
-    std::unique_ptr<Command> CommandParser::parsePublishCommand(ClientContext &c,int total_commands)
+    std::unique_ptr<Command> CommandParser::parsePublishCommand(ClientContext &c, int total_commands)
     {
         auto unknownCommand = std::make_unique<UnknowCommand>();
         auto publishCommand = std::make_unique<PublishCommand>();
         ParsedToken channelNameToken = Parser::Parse(c);
-        if(channelNameToken.type != ParsedToken::Type::BULK_STRING)
+        if (channelNameToken.type != ParsedToken::Type::BULK_STRING)
             return unknownCommand;
-        std::string_view channel{c.client->read_buffer.data()+channelNameToken.start_pos,channelNameToken.end_pos-channelNameToken.start_pos+1};
+        std::string_view channel{c.client->read_buffer.data() + channelNameToken.start_pos, channelNameToken.end_pos - channelNameToken.start_pos + 1};
         ParsedToken messageNameToken = Parser::Parse(c);
-        if(messageNameToken.type != ParsedToken::Type::BULK_STRING)
+        if (messageNameToken.type != ParsedToken::Type::BULK_STRING)
             return unknownCommand;
-        std::string_view message{c.client->read_buffer.data()+messageNameToken.start_pos,messageNameToken.end_pos-messageNameToken.start_pos+1};
+        std::string_view message{c.client->read_buffer.data() + messageNameToken.start_pos, messageNameToken.end_pos - messageNameToken.start_pos + 1};
         publishCommand->channel_name = channel;
         publishCommand->message = message;
         return publishCommand;
     }
-    std::unique_ptr<Command> CommandParser::parseUnsubscribeCommand(ClientContext &c,int total_commands)
+    std::unique_ptr<Command> CommandParser::parseUnsubscribeCommand(ClientContext &c, int total_commands)
     {
         auto unknownCommand = std::make_unique<UnknowCommand>();
         auto unsubScribeCommand = std::make_unique<UnSubscribeCommand>();
         ParsedToken channelNameToken = Parser::Parse(c);
-        if(channelNameToken.type != ParsedToken::Type::BULK_STRING)
+        if (channelNameToken.type != ParsedToken::Type::BULK_STRING)
             return unknownCommand;
-        std::string_view channel{c.client->read_buffer.data()+channelNameToken.start_pos,channelNameToken.end_pos-channelNameToken.start_pos+1};
+        std::string_view channel{c.client->read_buffer.data() + channelNameToken.start_pos, channelNameToken.end_pos - channelNameToken.start_pos + 1};
         unsubScribeCommand->channel_name = channel;
         return unsubScribeCommand;
     }
@@ -774,7 +776,7 @@ namespace REDIS_NAMESPACE
                 break;
 
             std::string_view score_str{read_buffer.data() + score_token.start_pos,
-                                        score_token.end_pos - score_token.start_pos + 1};
+                                       score_token.end_pos - score_token.start_pos + 1};
             std::string member{read_buffer.data() + member_token.start_pos,
                                member_token.end_pos - member_token.start_pos + 1};
 
@@ -834,9 +836,9 @@ namespace REDIS_NAMESPACE
                                key_token.end_pos - key_token.start_pos + 1};
 
         std::string_view start_str{read_buffer.data() + start_token.start_pos,
-                                    start_token.end_pos - start_token.start_pos + 1};
+                                   start_token.end_pos - start_token.start_pos + 1};
         std::string_view stop_str{read_buffer.data() + stop_token.start_pos,
-                                   stop_token.end_pos - stop_token.start_pos + 1};
+                                  stop_token.end_pos - stop_token.start_pos + 1};
 
         if (!convert_string_to_number(start_str, &cmd->start) ||
             !convert_string_to_number(stop_str, &cmd->stop))
@@ -896,9 +898,61 @@ namespace REDIS_NAMESPACE
             if (member_token.type == ParsedToken::Type::BULK_STRING)
             {
                 cmd->members.push_back(std::string{read_buffer.data() + member_token.start_pos,
-                                                    member_token.end_pos - member_token.start_pos + 1});
+                                                   member_token.end_pos - member_token.start_pos + 1});
             }
             total_commands--;
+        }
+
+        return cmd;
+    }
+    std::unique_ptr<Command> CommandParser::parseGeoAddCommand(ClientContext &c, int total_commands)
+    {
+        ParsedToken key_token = Parser::Parse(c);
+        if (key_token.type != ParsedToken::Type::BULK_STRING)
+            return std::make_unique<UnknowCommand>();
+
+        std::string_view read_buffer = c.client->read_buffer;
+        auto cmd = std::make_unique<GeoAddCommand>();
+        cmd->key = std::string{read_buffer.data() + key_token.start_pos,
+                               key_token.end_pos - key_token.start_pos + 1};
+        total_commands--;
+
+        while (total_commands >= 3)
+        {
+            ParsedToken lon_token = Parser::Parse(c);
+            ParsedToken lat_token = Parser::Parse(c);
+            ParsedToken member_token = Parser::Parse(c);
+
+            if (lon_token.type != ParsedToken::Type::BULK_STRING ||
+                lat_token.type != ParsedToken::Type::BULK_STRING ||
+                member_token.type != ParsedToken::Type::BULK_STRING)
+                break;
+
+            std::string_view lon_str{read_buffer.data() + lon_token.start_pos,
+                                     lon_token.end_pos - lon_token.start_pos + 1};
+            std::string_view lat_str{read_buffer.data() + lat_token.start_pos,
+                                     lat_token.end_pos - lat_token.start_pos + 1};
+
+            try
+            {
+                cmd->longitude = std::stod(std::string(lon_str));
+            }
+            catch (...)
+            {
+                cmd->longitude = 0.0;
+            }
+            try
+            {
+                cmd->latitude = std::stod(std::string(lat_str));
+            }
+            catch (...)
+            {
+                cmd->latitude = 0.0;
+            }
+
+            cmd->member = std::string{read_buffer.data() + member_token.start_pos,
+                                      member_token.end_pos - member_token.start_pos + 1};
+            total_commands -= 3;
         }
 
         return cmd;

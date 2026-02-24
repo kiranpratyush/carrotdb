@@ -93,6 +93,9 @@ namespace REDIS_NAMESPACE
         case CommandType::ZREM:
             handle_zrem(c);
             break;
+        case CommandType::GEOADD:
+            handle_geoadd(c);
+            break;
         default:
             handle_ping(c);
             break;
