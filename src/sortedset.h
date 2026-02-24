@@ -17,6 +17,7 @@ namespace REDIS_NAMESPACE
         size_t length{0};
 
     public:
+        bool isGeo{false};
         bool insert(std::string key, double score);
         bool remove(const std::string& member);
         std::optional<size_t> rank(const std::string& member) const;

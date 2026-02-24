@@ -2,6 +2,7 @@
 #include "parser/parser.h"
 #include "models/resp.h"
 #include "utils/utils.h"
+#include "geohash.h"
 #include "iostream"
 #include <memory>
 
@@ -955,6 +956,16 @@ namespace REDIS_NAMESPACE
                  cmd->latitude  < GeoAddCommand::minAllowedLat || cmd->latitude  > GeoAddCommand::maxAllowedLat))
             {
                 cmd->invalidLatLon = true;
+            }
+
+            if (!cmd->invalidLatLon)
+            {
+                GEO_HASH_NAMESPACE::GeoHash geoHash(
+                    {GeoAddCommand::minAllowedLat, GeoAddCommand::maxAllowedLat},
+                    {GeoAddCommand::minAllowedLon, GeoAddCommand::maxAllowedLon});
+                GEO_HASH_NAMESPACE::GeoHashBits hashBits{};
+                geoHash.geoHashEncode(cmd->longitude, cmd->latitude, 26, &hashBits);
+                cmd->score = static_cast<double>(hashBits.bits);
             }
 
             cmd->member = std::string{read_buffer.data() + member_token.start_pos,

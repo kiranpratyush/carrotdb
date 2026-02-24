@@ -40,9 +40,18 @@ namespace REDIS_NAMESPACE
 
         if (score.has_value())
         {
-            std::ostringstream oss;
-            oss << std::fixed << std::setprecision(14) << score.value();
-            encode_bulk_string(&c.client->write_buffer, oss.str());
+            std::string score_str;
+            if (sortedSet->isGeo)
+            {
+                score_str = std::to_string(static_cast<uint64_t>(score.value()));
+            }
+            else
+            {
+                std::ostringstream oss;
+                oss << std::fixed << std::setprecision(14) << score.value();
+                score_str = oss.str();
+            }
+            encode_bulk_string(&c.client->write_buffer, score_str);
         }
         else
         {

@@ -48,9 +48,9 @@ namespace REDIS_NAMESPACE
         }
 
         SortedSet *sortedSet = it->second.sortedSetPtr.get();
+        sortedSet->isGeo = true;
 
-        // TODO: replace hardcoded score with real geohash encoding
-        constexpr double score = 1.0;
+        double score = geoCmd->score;
         bool wasKeyExisted = sortedSet->insert(geoCmd->member, score);
         int added = wasKeyExisted ? 0 : 1;
 

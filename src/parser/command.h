@@ -80,6 +80,7 @@ namespace REDIS_NAMESPACE
         GeoAddCommand() { type = CommandType::GEOADD; }
         double longitude{};
         double latitude{};
+        double score{0.0};
         std::string member;
         bool invalidLatLon{false};
         bool is_write_command() const override
