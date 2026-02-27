@@ -27,7 +27,7 @@ namespace REDIS_NAMESPACE
             encode_array_header(&c.client->write_buffer, members.size());
             for (size_t i = 0; i < members.size(); i++)
             {
-                encode_null_bulk_string(&c.client->write_buffer);
+                encode_null_array(&c.client->write_buffer);
             }
             c.current_write_position = 0;
             return;
@@ -54,7 +54,7 @@ namespace REDIS_NAMESPACE
 
             if (!score.has_value())
             {
-                encode_null_bulk_string(&c.client->write_buffer);
+                encode_null_array(&c.client->write_buffer);
                 continue;
             }
 
@@ -67,7 +67,7 @@ namespace REDIS_NAMESPACE
 
             if (!success)
             {
-                encode_null_bulk_string(&c.client->write_buffer);
+                encode_null_array(&c.client->write_buffer);
                 continue;
             }
 
