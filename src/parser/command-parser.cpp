@@ -103,6 +103,8 @@ namespace REDIS_NAMESPACE
             cmd = parseGeoPosCommand(c, total_commands - 1);
         else if (is_equal(cmd_name, "GEODIST"))
             cmd = parseGeoDistCommand(c, total_commands - 1);
+        else if (is_equal(cmd_name, "GEOSEARCH"))
+            cmd = parseGeoSearchCommand(c, total_commands - 1);
         else
         {
             cmd = std::make_unique<UnknowCommand>();
@@ -1028,6 +1030,75 @@ namespace REDIS_NAMESPACE
                                    member1_token.end_pos - member1_token.start_pos + 1};
         cmd->member2 = std::string{read_buffer.data() + member2_token.start_pos,
                                    member2_token.end_pos - member2_token.start_pos + 1};
+
+        return cmd;
+    }
+
+    std::unique_ptr<Command> CommandParser::parseGeoSearchCommand(ClientContext &c, int total_commands)
+    {
+        ParsedToken key_token = Parser::Parse(c);
+        if (key_token.type != ParsedToken::Type::BULK_STRING)
+            return std::make_unique<UnknowCommand>();
+
+        ParsedToken fromlonlat_token = Parser::Parse(c);
+        if (fromlonlat_token.type != ParsedToken::Type::BULK_STRING)
+            return std::make_unique<UnknowCommand>();
+
+        ParsedToken lon_token = Parser::Parse(c);
+        if (lon_token.type != ParsedToken::Type::BULK_STRING)
+            return std::make_unique<UnknowCommand>();
+
+        ParsedToken lat_token = Parser::Parse(c);
+        if (lat_token.type != ParsedToken::Type::BULK_STRING)
+            return std::make_unique<UnknowCommand>();
+
+        ParsedToken withradius_token = Parser::Parse(c);
+        if (withradius_token.type != ParsedToken::Type::BULK_STRING)
+            return std::make_unique<UnknowCommand>();
+
+        ParsedToken radius_token = Parser::Parse(c);
+        if (radius_token.type != ParsedToken::Type::BULK_STRING)
+            return std::make_unique<UnknowCommand>();
+        ParsedToken unit = Parser::Parse(c); /*IGNORING UNIT for now*/
+
+        std::string_view read_buffer = c.client->read_buffer;
+        auto cmd = std::make_unique<GeoSearchCommand>();
+        cmd->key = std::string{read_buffer.data() + key_token.start_pos,
+                               key_token.end_pos - key_token.start_pos + 1};
+
+        std::string_view lon_str{read_buffer.data() + lon_token.start_pos,
+                                 lon_token.end_pos - lon_token.start_pos + 1};
+        std::string_view lat_str{read_buffer.data() + lat_token.start_pos,
+                                 lat_token.end_pos - lat_token.start_pos + 1};
+        std::string_view radius_str{read_buffer.data() + radius_token.start_pos,
+                                    radius_token.end_pos - radius_token.start_pos + 1};
+
+        try
+        {
+            cmd->longitude = std::stod(std::string(lon_str));
+        }
+        catch (...)
+        {
+            return std::make_unique<UnknowCommand>();
+        }
+
+        try
+        {
+            cmd->latitude = std::stod(std::string(lat_str));
+        }
+        catch (...)
+        {
+            return std::make_unique<UnknowCommand>();
+        }
+
+        try
+        {
+            cmd->radius = std::stod(std::string(radius_str));
+        }
+        catch (...)
+        {
+            return std::make_unique<UnknowCommand>();
+        }
 
         return cmd;
     }

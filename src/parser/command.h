@@ -44,7 +44,8 @@ namespace REDIS_NAMESPACE
         ZREM,
         GEOADD,
         GEOPOS,
-        GEODIST
+        GEODIST,
+        GEOSEARCH
     };
 
     // Base command structure
@@ -139,6 +140,22 @@ namespace REDIS_NAMESPACE
             cmd += "$" + std::to_string(member1.length()) + "\r\n" + member1 + "\r\n";
             cmd += "$" + std::to_string(member2.length()) + "\r\n" + member2 + "\r\n";
             return cmd;
+        }
+    };
+
+    struct GeoSearchCommand : public Command
+    {
+        GeoSearchCommand() { type = CommandType::GEOSEARCH; }
+        double longitude{};
+        double latitude{};
+        double radius{};
+        bool is_write_command() const override
+        {
+            return false;
+        }
+        std::string to_resp() const override
+        {
+            return "";
         }
     };
 
@@ -887,6 +904,8 @@ namespace REDIS_NAMESPACE
             return "geopos";
         case CommandType::GEODIST:
             return "geodist";
+        case CommandType::GEOSEARCH:
+            return "geosearch";
         default:
             return "unknown";
         }

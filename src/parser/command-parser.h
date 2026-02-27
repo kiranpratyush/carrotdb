@@ -49,5 +49,6 @@ namespace REDIS_NAMESPACE
         static std::unique_ptr<Command> parseGeoAddCommand(ClientContext &c, int total_commands);
         static std::unique_ptr<Command> parseGeoPosCommand(ClientContext &c, int total_commands);
         static std::unique_ptr<Command> parseGeoDistCommand(ClientContext &c, int total_commands);
+        static std::unique_ptr<Command> parseGeoSearchCommand(ClientContext &c, int total_commands);
     };
 }

@@ -23,6 +23,7 @@ namespace REDIS_NAMESPACE
         std::optional<size_t> rank(const std::string& member) const;
         std::optional<double> score(const std::string& member) const;
         std::vector<std::string> range(int64_t start, int64_t stop) const;
+        std::vector<std::pair<std::string, double>> getAllWithScores() const;
         size_t size() const;
     };
 
