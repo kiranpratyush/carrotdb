@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <openssl/sha.h>
+#include <openssl/crypto.h>
 
 #define MAX_BUFFER_SIZE 4096
 
@@ -176,5 +178,21 @@ namespace REDIS_NAMESPACE
         {
             encode_bulk_string(buffer, item);
         }
+    }
+
+    inline std::string hash_sha256(const std::string &input)
+    {
+        unsigned char hash[SHA256_DIGEST_LENGTH];
+        SHA256(reinterpret_cast<const unsigned char *>(input.c_str()), input.length(), hash);
+        
+        std::string result;
+        result.reserve(SHA256_DIGEST_LENGTH * 2);
+        for (int i = 0; i < SHA256_DIGEST_LENGTH; i++)
+        {
+            char buffer[3];
+            snprintf(buffer, sizeof(buffer), "%02x", hash[i]);
+            result += buffer;
+        }
+        return result;
     }
 }

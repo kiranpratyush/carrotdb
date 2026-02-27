@@ -9,6 +9,7 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 
 find_package(Threads REQUIRED)
 find_package(asio CONFIG REQUIRED)
+find_package(OpenSSL REQUIRED)
 
 add_executable(redis ${SOURCE_FILES})
 
@@ -16,3 +17,4 @@ target_include_directories(redis PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 target_link_libraries(redis PRIVATE asio asio::asio)
 target_link_libraries(redis PRIVATE Threads::Threads)
+target_link_libraries(redis PRIVATE OpenSSL::SSL OpenSSL::Crypto)

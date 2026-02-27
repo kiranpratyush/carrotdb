@@ -17,6 +17,7 @@ namespace ACL_NAMESPACE
         std::shared_ptr<User> getDefaultUser();
         std::shared_ptr<User> getUser(const std::string &username);
         void addUser(std::shared_ptr<User> user);
+        void setUser(const std::string &username, const std::string &hashedPassword, const std::vector<std::string> &flags);
     };
 }
 #endif

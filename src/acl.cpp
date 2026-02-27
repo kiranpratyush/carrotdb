@@ -30,4 +30,29 @@ namespace ACL_NAMESPACE
     {
         users[user->username] = user;
     }
+
+    void ACLManager::setUser(const std::string &username, const std::string &hashedPassword, const std::vector<std::string> &flags)
+    {
+        auto it = users.find(username);
+        std::shared_ptr<User> user;
+        
+        if (it != users.end())
+        {
+            user = it->second;
+        }
+        else
+        {
+            user = std::make_shared<User>(username);
+            users[username] = user;
+        }
+        
+        if (!hashedPassword.empty())
+        {
+            user->passwords.clear();
+            user->passwords.push_back(hashedPassword);
+            user->nopass = false;
+        }
+        
+        user->flags = flags;
+    }
 }

@@ -47,7 +47,8 @@ namespace REDIS_NAMESPACE
         GEODIST,
         GEOSEARCH,
         ACL_WHOAMI,
-        ACL_GETUSER
+        ACL_GETUSER,
+        ACL_SETUSER
     };
 
     // Base command structure
@@ -283,6 +284,22 @@ namespace REDIS_NAMESPACE
         std::string to_resp() const override
         {
             return "*2\r\n$3\r\nACL\r\n$7\r\nGETUSER\r\n";
+        }
+    };
+
+    struct ACLSetUserCommand : public Command
+    {
+        ACLSetUserCommand() { type = CommandType::ACL_SETUSER; }
+        std::string username;
+        std::optional<std::string> password;
+        std::vector<std::string> flags;
+        bool is_write_command() const override
+        {
+            return true;
+        }
+        std::string to_resp() const override
+        {
+            return "*2\r\n$3\r\nACL\r\n$7\r\nSETUSER\r\n";
         }
     };
 
@@ -940,6 +957,8 @@ namespace REDIS_NAMESPACE
             return "acl_whoami";
         case CommandType::ACL_GETUSER:
             return "acl_getuser";
+        case CommandType::ACL_SETUSER:
+            return "acl_setuser";
         default:
             return "unknown";
         }

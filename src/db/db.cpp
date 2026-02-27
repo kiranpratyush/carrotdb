@@ -146,6 +146,11 @@ namespace REDIS_NAMESPACE
             handleGetConfig(c, serverConfig);
             return;
         }
+        if(c.command->type == CommandType::ACL_SETUSER)
+        {
+            handle_acl_setuser(c,serverConfig);
+            return;
+        }
         call(c, *c.command);
     }
 

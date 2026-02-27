@@ -9,6 +9,9 @@ enum class ServerRole
     MASTER,
     SLAVE
 };
+namespace ACL_NAMESPACE{
+    class ACLManager;
+}
 
 struct ServerConfig
 {
@@ -21,5 +24,6 @@ struct ServerConfig
     uint8_t replicationStatus{0};
     std::string rdb_file_path{""};
     std::string rdb_file_name{""};
+    ACL_NAMESPACE::ACLManager *aclManager{nullptr};
 };
 #endif

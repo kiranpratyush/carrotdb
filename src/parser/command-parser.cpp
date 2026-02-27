@@ -1139,6 +1139,45 @@ namespace REDIS_NAMESPACE
             return cmd;
         }
 
+        if (is_equal(cmd_name, "SETUSER"))
+        {
+            total_commands--;
+            if (total_commands < 1)
+                return std::make_unique<UnknowCommand>();
+
+            auto cmd = std::make_unique<ACLSetUserCommand>();
+
+            ParsedToken username_token = Parser::Parse(c);
+            if (username_token.type != ParsedToken::Type::BULK_STRING)
+                return std::make_unique<UnknowCommand>();
+            
+            cmd->username = std::string{c.client->read_buffer.data() + username_token.start_pos,
+                                        username_token.end_pos - username_token.start_pos + 1};
+            total_commands--;
+
+            while (total_commands > 0)
+            {
+                ParsedToken token = Parser::Parse(c);
+                if (token.type != ParsedToken::Type::BULK_STRING)
+                    break;
+                
+                std::string arg{c.client->read_buffer.data() + token.start_pos,
+                               token.end_pos - token.start_pos + 1};
+                
+                if (arg[0] == '>' || arg[0] == '+' || arg[0] == '~')
+                {
+                    cmd->password = arg.substr(1);
+                }
+                else
+                {
+                    cmd->flags.push_back(arg);
+                }
+                total_commands--;
+            }
+
+            return cmd;
+        }
+
         return std::make_unique<UnknowCommand>();
     }
 

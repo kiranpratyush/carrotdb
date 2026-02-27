@@ -52,6 +52,7 @@ namespace SERVER_NAMESPACE
                    rdb{}
         {
             rdb.setDBInstance(db);
+            config.aclManager = &aclManager;
         };
         int setup();
         ~Server() = default;
