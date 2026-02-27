@@ -21,6 +21,9 @@ namespace REDIS_NAMESPACE
         case CommandType::ACL_WHOAMI:
             handle_acl_whoami(c);
             break;
+        case CommandType::ACL_GETUSER:
+            handle_acl_getuser(c);
+            break;
         case CommandType::SET:
             handle_set(c, static_cast<const SetCommand &>(cmd));
             break;

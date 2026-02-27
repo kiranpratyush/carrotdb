@@ -1106,7 +1106,7 @@ namespace REDIS_NAMESPACE
     }
     std::unique_ptr<Command> CommandParser::parseACLWhoamiCommand(ClientContext &c, int total_commands)
     {
-        if (total_commands != 1)
+        if (total_commands < 1)
             return std::make_unique<UnknowCommand>();
 
         ParsedToken sub_cmd = Parser::Parse(c);
@@ -1118,6 +1118,22 @@ namespace REDIS_NAMESPACE
 
         if (is_equal(cmd_name, "WHOAMI"))
             return std::make_unique<ACLWhoamiCommand>();
+
+        if (is_equal(cmd_name, "GETUSER"))
+        {
+            total_commands--;
+            if (total_commands > 1)
+                return std::make_unique<UnknowCommand>();
+
+            if (total_commands == 1)
+            {
+                ParsedToken username_token = Parser::Parse(c);
+                if (username_token.type != ParsedToken::Type::BULK_STRING)
+                    return std::make_unique<UnknowCommand>();
+            }
+
+            return std::make_unique<ACLGetUserCommand>();
+        }
 
         return std::make_unique<UnknowCommand>();
     }

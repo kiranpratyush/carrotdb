@@ -46,7 +46,8 @@ namespace REDIS_NAMESPACE
         GEOPOS,
         GEODIST,
         GEOSEARCH,
-        ACL_WHOAMI
+        ACL_WHOAMI,
+        ACL_GETUSER
     };
 
     // Base command structure
@@ -268,6 +269,19 @@ namespace REDIS_NAMESPACE
         std::string to_resp() const override
         {
             return "*2\r\n$3\r\nACL\r\n$6\r\nWHOAMI\r\n";
+        }
+    };
+    
+    struct ACLGetUserCommand : public Command
+    {
+        ACLGetUserCommand() { type = CommandType::ACL_GETUSER; }
+        bool is_write_command() const override
+        {
+            return false;
+        }
+        std::string to_resp() const override
+        {
+            return "*2\r\n$3\r\nACL\r\n$7\r\nGETUSER\r\n";
         }
     };
 
@@ -923,6 +937,8 @@ namespace REDIS_NAMESPACE
             return "geosearch";
         case CommandType::ACL_WHOAMI:
             return "acl_whoami";
+        case CommandType::ACL_GETUSER:
+            return "acl_getuser";
         default:
             return "unknown";
         }

@@ -10,6 +10,7 @@ namespace ACL_NAMESPACE
     {
         std::string username;
         std::vector<std::string> passwords;
+        std::vector<std::string> flags;
         bool is_enabled;
         bool nopass;
 
