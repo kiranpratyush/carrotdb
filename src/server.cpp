@@ -92,6 +92,8 @@ namespace SERVER_NAMESPACE
 
     void Server::onNewConnection(std::shared_ptr<Client> client)
     {
+        client->user = aclManager.getDefaultUser();
+
         auto message_callback = [this](TcpConnection *conn)
         {
             onMessage(conn);

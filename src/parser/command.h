@@ -45,7 +45,8 @@ namespace REDIS_NAMESPACE
         GEOADD,
         GEOPOS,
         GEODIST,
-        GEOSEARCH
+        GEOSEARCH,
+        ACL_WHOAMI
     };
 
     // Base command structure
@@ -253,6 +254,20 @@ namespace REDIS_NAMESPACE
             std::string cmd = "*2\r\n$4\r\nECHO\r\n";
             cmd += "$" + std::to_string(message.length()) + "\r\n" + message + "\r\n";
             return cmd;
+        }
+    };
+
+    // ACL WHOAMI command
+    struct ACLWhoamiCommand : public Command
+    {
+        ACLWhoamiCommand() { type = CommandType::ACL_WHOAMI; }
+        bool is_write_command() const override
+        {
+            return false;
+        }
+        std::string to_resp() const override
+        {
+            return "*2\r\n$3\r\nACL\r\n$6\r\nWHOAMI\r\n";
         }
     };
 
@@ -906,6 +921,8 @@ namespace REDIS_NAMESPACE
             return "geodist";
         case CommandType::GEOSEARCH:
             return "geosearch";
+        case CommandType::ACL_WHOAMI:
+            return "acl_whoami";
         default:
             return "unknown";
         }

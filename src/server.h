@@ -20,6 +20,7 @@
 #include "acceptor.h"
 #include "master-connection.h"
 #include "rdb.h"
+#include "acl.h"
 
 namespace SERVER_NAMESPACE
 {
@@ -33,6 +34,7 @@ namespace SERVER_NAMESPACE
 
         ServerConfig config;
         REPLICATION_NAMESPACE::ReplicationManager replicationManager{};
+        ACL_NAMESPACE::ACLManager aclManager{};
         RDB_NAMESPACE::Rdb rdb;
 
         void handle_expired_blocked_clients();

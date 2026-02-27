@@ -39,6 +39,7 @@ namespace REDIS_NAMESPACE
         void call(ClientContext &context, Command &c);
         void handle_ping(ClientContext &context);
         void handle_echo(ClientContext &context, const EchoCommand &cmd);
+        void handle_acl_whoami(ClientContext &context);
         void handle_set(ClientContext &context, const SetCommand &cmd);
         void handle_get_or_type(ClientContext &context, const Command &cmd);
         void handle_push(ClientContext &context, const Command &cmd);

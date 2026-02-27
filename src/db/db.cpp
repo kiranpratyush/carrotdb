@@ -18,6 +18,9 @@ namespace REDIS_NAMESPACE
         case CommandType::ECHO:
             handle_echo(c, static_cast<const EchoCommand &>(cmd));
             break;
+        case CommandType::ACL_WHOAMI:
+            handle_acl_whoami(c);
+            break;
         case CommandType::SET:
             handle_set(c, static_cast<const SetCommand &>(cmd));
             break;
@@ -175,6 +178,17 @@ namespace REDIS_NAMESPACE
     void DB::handle_echo(ClientContext &c, const EchoCommand &cmd)
     {
         encode_bulk_string(&c.client->write_buffer, cmd.message);
+        c.current_write_position = 0;
+    }
+
+    void DB::handle_acl_whoami(ClientContext &c)
+    {
+        std::string username = "default";
+        if (c.client->user)
+        {
+            username = c.client->user->username;
+        }
+        encode_bulk_string(&c.client->write_buffer, username);
         c.current_write_position = 0;
     }
 

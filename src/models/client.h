@@ -5,6 +5,7 @@
 #include <vector>
 #include <chrono>
 #include "parser/command.h"
+#include "user.h"
 
 #ifndef SERVER_NAMESPACE
 #define SERVER_NAMESPACE server
@@ -36,6 +37,7 @@ namespace SERVER_NAMESPACE
         bool isslave{};
         int64_t replica_offset{0};
         uint64_t total_subscribed_channels{0};
+        std::shared_ptr<ACL_NAMESPACE::User> user{};
 
         Client() = default;
 

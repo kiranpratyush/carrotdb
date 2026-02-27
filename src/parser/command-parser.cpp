@@ -105,6 +105,8 @@ namespace REDIS_NAMESPACE
             cmd = parseGeoDistCommand(c, total_commands - 1);
         else if (is_equal(cmd_name, "GEOSEARCH"))
             cmd = parseGeoSearchCommand(c, total_commands - 1);
+        else if (is_equal(cmd_name, "ACL"))
+            cmd = parseACLWhoamiCommand(c, total_commands - 1);
         else
         {
             cmd = std::make_unique<UnknowCommand>();
@@ -959,7 +961,7 @@ namespace REDIS_NAMESPACE
 
             if (!cmd->invalidLatLon &&
                 (cmd->longitude < GeoAddCommand::minAllowedLon || cmd->longitude > GeoAddCommand::maxAllowedLon ||
-                 cmd->latitude  < GeoAddCommand::minAllowedLat || cmd->latitude  > GeoAddCommand::maxAllowedLat))
+                 cmd->latitude < GeoAddCommand::minAllowedLat || cmd->latitude > GeoAddCommand::maxAllowedLat))
             {
                 cmd->invalidLatLon = true;
             }
@@ -1101,6 +1103,23 @@ namespace REDIS_NAMESPACE
         }
 
         return cmd;
+    }
+    std::unique_ptr<Command> CommandParser::parseACLWhoamiCommand(ClientContext &c, int total_commands)
+    {
+        if (total_commands != 1)
+            return std::make_unique<UnknowCommand>();
+
+        ParsedToken sub_cmd = Parser::Parse(c);
+        if (sub_cmd.type != ParsedToken::Type::BULK_STRING)
+            return std::make_unique<UnknowCommand>();
+
+        std::string_view cmd_name{c.client->read_buffer.data() + sub_cmd.start_pos,
+                                  sub_cmd.end_pos - sub_cmd.start_pos + 1};
+
+        if (is_equal(cmd_name, "WHOAMI"))
+            return std::make_unique<ACLWhoamiCommand>();
+
+        return std::make_unique<UnknowCommand>();
     }
 
 }
