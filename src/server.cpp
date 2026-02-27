@@ -93,6 +93,7 @@ namespace SERVER_NAMESPACE
     void Server::onNewConnection(std::shared_ptr<Client> client)
     {
         client->user = aclManager.getDefaultUser();
+        client->is_authenticated = client->user->nopass || client->user->passwords.empty();
 
         auto message_callback = [this](TcpConnection *conn)
         {

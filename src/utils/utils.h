@@ -155,17 +155,12 @@ namespace REDIS_NAMESPACE
     }
 
     // Encode a RESP Error (-ERR <message>\r\n)
-    inline void encode_error(std::string *buffer, std::string_view message, bool isWrongType = false)
+    inline void encode_error(std::string *buffer, std::string_view message, std::string_view errorType="ERR")
     {
-        if (isWrongType)
-        {
-            buffer->append("-WRONGPASS");
-        }
-        else
-        {
-            buffer->append("-ERR ");
-        }
-
+        
+        buffer->append("-");
+        buffer->append(errorType);
+        buffer->append(" ");
         buffer->append(message);
         buffer->append("\r\n");
     }

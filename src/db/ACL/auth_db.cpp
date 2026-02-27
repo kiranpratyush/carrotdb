@@ -13,7 +13,7 @@ namespace REDIS_NAMESPACE
 
         if (!user || !user->is_enabled)
         {
-            encode_error(&c.client->write_buffer, "WRONGPASS invalid username-password pair or user is disabled");
+            encode_error(&c.client->write_buffer, "invalid username-password pair or user is disabled","WRONGPASS");
             c.current_write_position = 0;
             return;
         }
@@ -21,6 +21,7 @@ namespace REDIS_NAMESPACE
         if (user->nopass)
         {
             c.client->user = user;
+            c.client->is_authenticated = true;
             encode_simple_string(&c.client->write_buffer, "OK");
             c.current_write_position = 0;
             return;
@@ -39,12 +40,13 @@ namespace REDIS_NAMESPACE
 
         if (!passwordMatch)
         {
-            encode_error(&c.client->write_buffer, "invalid username-password pair or user is disabled",true);
+            encode_error(&c.client->write_buffer, "invalid username-password pair or user is disabled","WRONGPASS");
             c.current_write_position = 0;
             return;
         }
 
         c.client->user = user;
+        c.client->is_authenticated = true;
         encode_simple_string(&c.client->write_buffer, "OK");
         c.current_write_position = 0;
     }

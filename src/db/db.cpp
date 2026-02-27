@@ -125,6 +125,13 @@ namespace REDIS_NAMESPACE
             return;
         }
 
+        if (c.command->type != CommandType::AUTH && !c.client->is_authenticated)
+        {
+            encode_error(&c.client->write_buffer, "Authentication required.","NOAUTH");
+            c.current_write_position = 0;
+            return;
+        }
+
         if (c.client->isClientOnTransaction())
         {
             if (c.command->type != CommandType::EXEC && c.command->type != CommandType::DISCARD)
