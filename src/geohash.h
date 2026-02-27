@@ -17,6 +17,11 @@ namespace GEO_HASH_NAMESPACE
         uint64_t bits; /*Actual interleaved bits of longitude and latitude*/
         uint8_t step;  /*Scaling factor*/
     };
+    struct GeoHashArea{
+        GeoHashBits hashbits;
+        GeoHashRange longitude;
+        GeoHashRange latitude;
+    };
 
     class GeoHash
     {
@@ -32,7 +37,7 @@ namespace GEO_HASH_NAMESPACE
             : latRange(latRange), longRange(longRange) {}
 
         bool geoHashEncode(double longitude, double latitude, uint8_t step, GeoHashBits *hash);
-        bool geoHashDecode(); /*TODO*/
+        bool geoHashDecode(GeoHashBits hash,GeoHashArea *area);
     };
 }
 

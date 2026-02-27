@@ -86,4 +86,21 @@ namespace GEO_HASH_NAMESPACE
         hash->bits = interleave64(lat_offset, long_offset);
         return 1;
     }
+
+    bool GeoHash::geoHashDecode(GeoHashBits hashBits,GeoHashArea*hashArea)
+    {
+        if(hashArea == nullptr )
+            return false;
+        hashArea->hashbits = hashBits;
+        uint64_t deinterleavedBits = deinterleave64(hashBits.bits);
+        uint32_t latoffsetWithScale = deinterleavedBits;
+        uint32_t longoffsetWithScale = deinterleavedBits>>32;
+        double latScale= latRange.max-latRange.min;
+        double longScale = longRange.max - longRange.min;
+        hashArea->latitude.min = latRange.min+(latoffsetWithScale*1.0/(1ull<<hashBits.step))*latScale;
+        hashArea->latitude.max = latRange.min+((latoffsetWithScale + 1) * 1.0 / (1ull << hashBits.step)) * latScale;
+        hashArea->longitude.min = longRange.min+(longoffsetWithScale*1.0/(1ull<hashBits.step))*longScale;
+        hashArea->longitude.max  = longRange.max + ((longoffsetWithScale+1)*1.0/(1ull<<hashBits.step))*longScale;
+        return true;
+    }
 }

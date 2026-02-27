@@ -42,7 +42,8 @@ namespace REDIS_NAMESPACE
         ZCARD,
         ZSCORE,
         ZREM,
-        GEOADD
+        GEOADD,
+        GEOPOS
     };
 
     // Base command structure
@@ -97,6 +98,26 @@ namespace REDIS_NAMESPACE
             std::string lat_str = std::to_string(latitude);
             cmd += "$" + std::to_string(lat_str.length()) + "\r\n" + lat_str + "\r\n";
             cmd += "$" + std::to_string(member.length()) + "\r\n" + member + "\r\n";
+            return cmd;
+        }
+    };
+
+    struct GeoPosCommand : public Command
+    {
+        GeoPosCommand() { type = CommandType::GEOPOS; }
+        std::vector<std::string> members{};
+        bool is_write_command() const override
+        {
+            return false;
+        }
+        std::string to_resp() const override
+        {
+            std::string cmd = "*2\r\n$6\r\nGEOPOS\r\n";
+            cmd += "$" + std::to_string(key.length()) + "\r\n" + key + "\r\n";
+            for (const auto &member : members)
+            {
+                cmd += "$" + std::to_string(member.length()) + "\r\n" + member + "\r\n";
+            }
             return cmd;
         }
     };
@@ -842,6 +863,8 @@ namespace REDIS_NAMESPACE
             return "zscore";
         case CommandType::ZREM:
             return "zrem";
+        case CommandType::GEOPOS:
+            return "geopos";
         default:
             return "unknown";
         }
