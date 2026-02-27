@@ -1051,3 +1051,6 @@ vcpkg_installed
 
 #code files
 temp
+
+#vscode
+.vscode/*
