@@ -7,6 +7,7 @@ namespace ACL_NAMESPACE
         defaultUser = std::make_shared<User>("default");
         defaultUser->nopass = true;
         defaultUser->is_enabled = true;
+        defaultUser->flags.push_back("nopass");
         users["default"] = defaultUser;
     }
 

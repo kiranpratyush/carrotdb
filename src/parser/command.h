@@ -275,6 +275,7 @@ namespace REDIS_NAMESPACE
     struct ACLGetUserCommand : public Command
     {
         ACLGetUserCommand() { type = CommandType::ACL_GETUSER; }
+        std::string username;
         bool is_write_command() const override
         {
             return false;

@@ -106,7 +106,7 @@ namespace REDIS_NAMESPACE
         else if (is_equal(cmd_name, "GEOSEARCH"))
             cmd = parseGeoSearchCommand(c, total_commands - 1);
         else if (is_equal(cmd_name, "ACL"))
-            cmd = parseACLWhoamiCommand(c, total_commands - 1);
+            cmd = parseACLCommand(c, total_commands - 1);
         else
         {
             cmd = std::make_unique<UnknowCommand>();
@@ -1104,7 +1104,7 @@ namespace REDIS_NAMESPACE
 
         return cmd;
     }
-    std::unique_ptr<Command> CommandParser::parseACLWhoamiCommand(ClientContext &c, int total_commands)
+    std::unique_ptr<Command> CommandParser::parseACLCommand(ClientContext &c, int total_commands)
     {
         if (total_commands < 1)
             return std::make_unique<UnknowCommand>();
@@ -1125,14 +1125,18 @@ namespace REDIS_NAMESPACE
             if (total_commands > 1)
                 return std::make_unique<UnknowCommand>();
 
+            auto cmd = std::make_unique<ACLGetUserCommand>();
             if (total_commands == 1)
             {
                 ParsedToken username_token = Parser::Parse(c);
                 if (username_token.type != ParsedToken::Type::BULK_STRING)
                     return std::make_unique<UnknowCommand>();
+                
+                cmd->username = std::string{c.client->read_buffer.data() + username_token.start_pos,
+                                            username_token.end_pos - username_token.start_pos + 1};
             }
 
-            return std::make_unique<ACLGetUserCommand>();
+            return cmd;
         }
 
         return std::make_unique<UnknowCommand>();

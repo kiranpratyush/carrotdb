@@ -14,7 +14,7 @@ namespace ACL_NAMESPACE
         bool is_enabled;
         bool nopass;
 
-        User() : username("default"), is_enabled(true), nopass(true) {}
+        User() : username("default"), is_enabled(true), nopass(true) { flags.push_back("nopass"); }
 
         explicit User(const std::string &name) : username(name), is_enabled(true), nopass(false) {}
     };
