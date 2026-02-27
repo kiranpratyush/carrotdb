@@ -107,6 +107,8 @@ namespace REDIS_NAMESPACE
             cmd = parseGeoSearchCommand(c, total_commands - 1);
         else if (is_equal(cmd_name, "ACL"))
             cmd = parseACLCommand(c, total_commands - 1);
+        else if (is_equal(cmd_name, "AUTH"))
+            cmd = parseAuthCommand(c);
         else
         {
             cmd = std::make_unique<UnknowCommand>();
@@ -1179,6 +1181,25 @@ namespace REDIS_NAMESPACE
         }
 
         return std::make_unique<UnknowCommand>();
+    }
+
+    std::unique_ptr<Command> CommandParser::parseAuthCommand(ClientContext &c)
+    {
+        ParsedToken username_token = Parser::Parse(c);
+        if (username_token.type != ParsedToken::Type::BULK_STRING)
+            return std::make_unique<UnknowCommand>();
+
+        ParsedToken password_token = Parser::Parse(c);
+        if (password_token.type != ParsedToken::Type::BULK_STRING)
+            return std::make_unique<UnknowCommand>();
+
+        std::string_view read_buffer = c.client->read_buffer;
+        auto cmd = std::make_unique<AuthCommand>();
+        cmd->username = std::string{read_buffer.data() + username_token.start_pos,
+                                    username_token.end_pos - username_token.start_pos + 1};
+        cmd->password = std::string{read_buffer.data() + password_token.start_pos,
+                                    password_token.end_pos - password_token.start_pos + 1};
+        return cmd;
     }
 
 }

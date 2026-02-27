@@ -48,7 +48,8 @@ namespace REDIS_NAMESPACE
         GEOSEARCH,
         ACL_WHOAMI,
         ACL_GETUSER,
-        ACL_SETUSER
+        ACL_SETUSER,
+        AUTH
     };
 
     // Base command structure
@@ -300,6 +301,21 @@ namespace REDIS_NAMESPACE
         std::string to_resp() const override
         {
             return "*2\r\n$3\r\nACL\r\n$7\r\nSETUSER\r\n";
+        }
+    };
+
+    struct AuthCommand : public Command
+    {
+        AuthCommand() { type = CommandType::AUTH; }
+        std::string username;
+        std::string password;
+        bool is_write_command() const override
+        {
+            return false;
+        }
+        std::string to_resp() const override
+        {
+            return "*3\r\n$4\r\nAUTH\r\n";
         }
     };
 

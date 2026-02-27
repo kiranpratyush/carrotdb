@@ -42,6 +42,7 @@ namespace REDIS_NAMESPACE
         void handle_acl_whoami(ClientContext &context);
         void handle_acl_getuser(ClientContext &context);
         void handle_acl_setuser(ClientContext &context,const ServerConfig *config);
+        void handle_auth(ClientContext &context, const ServerConfig *config);
         void handle_set(ClientContext &context, const SetCommand &cmd);
         void handle_get_or_type(ClientContext &context, const Command &cmd);
         void handle_push(ClientContext &context, const Command &cmd);
