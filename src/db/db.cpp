@@ -125,7 +125,7 @@ namespace REDIS_NAMESPACE
             return;
         }
 
-        if (c.command->type != CommandType::AUTH && !c.client->is_authenticated)
+        if (c.command->type == CommandType::ACL_WHOAMI && !c.client->is_authenticated)
         {
             encode_error(&c.client->write_buffer, "Authentication required.","NOAUTH");
             c.current_write_position = 0;
