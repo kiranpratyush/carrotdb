@@ -127,7 +127,7 @@ namespace REDIS_NAMESPACE
 
         if (c.command->type == CommandType::ACL_WHOAMI && !c.client->is_authenticated)
         {
-            encode_error(&c.client->write_buffer, "Authentication required.","NOAUTH");
+            encode_error(&c.client->write_buffer, "Authentication required.", "NOAUTH");
             c.current_write_position = 0;
             return;
         }
@@ -153,14 +153,14 @@ namespace REDIS_NAMESPACE
             handleGetConfig(c, serverConfig);
             return;
         }
-        if(c.command->type == CommandType::ACL_SETUSER)
+        if (c.command->type == CommandType::ACL_SETUSER)
         {
-            handle_acl_setuser(c,serverConfig);
+            handle_acl_setuser(c, serverConfig);
             return;
         }
-        if(c.command->type == CommandType::AUTH)
+        if (c.command->type == CommandType::AUTH)
         {
-            handle_auth(c,serverConfig);
+            handle_auth(c, serverConfig);
             return;
         }
         call(c, *c.command);
