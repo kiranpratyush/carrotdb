@@ -103,4 +103,26 @@ namespace GEO_HASH_NAMESPACE
         hashArea->longitude.max  = longRange.min + ((longoffsetWithScale+1)*1.0/(1ull<<hashBits.step))*longScale;
         return true;
     }
+
+    double GeoHash::calculateDistance(const GeoHashArea& area1, const GeoHashArea& area2)
+    {
+        double lon1 = (area1.longitude.min + area1.longitude.max) / 2.0;
+        double lat1 = (area1.latitude.min + area1.latitude.max) / 2.0;
+        double lon2 = (area2.longitude.min + area2.longitude.max) / 2.0;
+        double lat2 = (area2.latitude.min + area2.latitude.max) / 2.0;
+
+        const double EarthRadius = 6372797.560856;
+
+        double lat1Rad = lat1 * M_PI / 180.0;
+        double lat2Rad = lat2 * M_PI / 180.0;
+        double dLat = (lat2 - lat1) * M_PI / 180.0;
+        double dLon = (lon2 - lon1) * M_PI / 180.0;
+
+        double a = sin(dLat / 2) * sin(dLat / 2) +
+                   cos(lat1Rad) * cos(lat2Rad) *
+                   sin(dLon / 2) * sin(dLon / 2);
+        double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+
+        return EarthRadius * c;
+    }
 }

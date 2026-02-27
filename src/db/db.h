@@ -67,6 +67,7 @@ namespace REDIS_NAMESPACE
         void handle_zrem(ClientContext &context);
         void handle_geoadd(ClientContext &context);
         void handle_geopos(ClientContext &context);
+        void handle_geodist(ClientContext &context);
         void signal_key_ready(const std::string &key, ClientContext &context);
         void handle_blocked_xread_clients(const std::string &key, ClientContext &context);
         void mark_watching_clients_dirty(const std::string &key);

@@ -99,6 +99,9 @@ namespace REDIS_NAMESPACE
         case CommandType::GEOPOS:
             handle_geopos(c);
             break;
+        case CommandType::GEODIST:
+            handle_geodist(c);
+            break;
         default:
             handle_ping(c);
             break;

@@ -43,7 +43,8 @@ namespace REDIS_NAMESPACE
         ZSCORE,
         ZREM,
         GEOADD,
-        GEOPOS
+        GEOPOS,
+        GEODIST
     };
 
     // Base command structure
@@ -118,6 +119,25 @@ namespace REDIS_NAMESPACE
             {
                 cmd += "$" + std::to_string(member.length()) + "\r\n" + member + "\r\n";
             }
+            return cmd;
+        }
+    };
+
+    struct GeoDistCommand : public Command
+    {
+        GeoDistCommand() { type = CommandType::GEODIST; }
+        std::string member1{};
+        std::string member2{};
+        bool is_write_command() const override
+        {
+            return false;
+        }
+        std::string to_resp() const override
+        {
+            std::string cmd = "*4\r\n$7\r\nGEODIST\r\n";
+            cmd += "$" + std::to_string(key.length()) + "\r\n" + key + "\r\n";
+            cmd += "$" + std::to_string(member1.length()) + "\r\n" + member1 + "\r\n";
+            cmd += "$" + std::to_string(member2.length()) + "\r\n" + member2 + "\r\n";
             return cmd;
         }
     };
@@ -865,6 +885,8 @@ namespace REDIS_NAMESPACE
             return "zrem";
         case CommandType::GEOPOS:
             return "geopos";
+        case CommandType::GEODIST:
+            return "geodist";
         default:
             return "unknown";
         }

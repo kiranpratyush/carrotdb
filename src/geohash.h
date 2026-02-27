@@ -5,6 +5,7 @@
 #ifndef GEO_HASH
 #define GEO_HASH
 #include <cstdint>
+#include <cmath>
 namespace GEO_HASH_NAMESPACE
 {
     struct GeoHashRange
@@ -38,6 +39,7 @@ namespace GEO_HASH_NAMESPACE
 
         bool geoHashEncode(double longitude, double latitude, uint8_t step, GeoHashBits *hash);
         bool geoHashDecode(GeoHashBits hash,GeoHashArea *area);
+        double calculateDistance(const GeoHashArea& area1, const GeoHashArea& area2);
     };
 }
 

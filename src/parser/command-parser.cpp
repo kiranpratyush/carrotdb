@@ -101,6 +101,8 @@ namespace REDIS_NAMESPACE
             cmd = parseGeoAddCommand(c, total_commands - 1);
         else if (is_equal(cmd_name, "GEOPOS"))
             cmd = parseGeoPosCommand(c, total_commands - 1);
+        else if (is_equal(cmd_name, "GEODIST"))
+            cmd = parseGeoDistCommand(c, total_commands - 1);
         else
         {
             cmd = std::make_unique<UnknowCommand>();
@@ -1000,6 +1002,32 @@ namespace REDIS_NAMESPACE
             }
             total_commands--;
         }
+
+        return cmd;
+    }
+
+    std::unique_ptr<Command> CommandParser::parseGeoDistCommand(ClientContext &c, int total_commands)
+    {
+        ParsedToken key_token = Parser::Parse(c);
+        if (key_token.type != ParsedToken::Type::BULK_STRING)
+            return std::make_unique<UnknowCommand>();
+
+        ParsedToken member1_token = Parser::Parse(c);
+        if (member1_token.type != ParsedToken::Type::BULK_STRING)
+            return std::make_unique<UnknowCommand>();
+
+        ParsedToken member2_token = Parser::Parse(c);
+        if (member2_token.type != ParsedToken::Type::BULK_STRING)
+            return std::make_unique<UnknowCommand>();
+
+        std::string_view read_buffer = c.client->read_buffer;
+        auto cmd = std::make_unique<GeoDistCommand>();
+        cmd->key = std::string{read_buffer.data() + key_token.start_pos,
+                               key_token.end_pos - key_token.start_pos + 1};
+        cmd->member1 = std::string{read_buffer.data() + member1_token.start_pos,
+                                   member1_token.end_pos - member1_token.start_pos + 1};
+        cmd->member2 = std::string{read_buffer.data() + member2_token.start_pos,
+                                   member2_token.end_pos - member2_token.start_pos + 1};
 
         return cmd;
     }
