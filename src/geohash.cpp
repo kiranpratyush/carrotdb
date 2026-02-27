@@ -99,8 +99,8 @@ namespace GEO_HASH_NAMESPACE
         double longScale = longRange.max - longRange.min;
         hashArea->latitude.min = latRange.min+(latoffsetWithScale*1.0/(1ull<<hashBits.step))*latScale;
         hashArea->latitude.max = latRange.min+((latoffsetWithScale + 1) * 1.0 / (1ull << hashBits.step)) * latScale;
-        hashArea->longitude.min = longRange.min+(longoffsetWithScale*1.0/(1ull<hashBits.step))*longScale;
-        hashArea->longitude.max  = longRange.max + ((longoffsetWithScale+1)*1.0/(1ull<<hashBits.step))*longScale;
+        hashArea->longitude.min = longRange.min+(longoffsetWithScale*1.0/(1ull<<hashBits.step))*longScale;
+        hashArea->longitude.max  = longRange.min + ((longoffsetWithScale+1)*1.0/(1ull<<hashBits.step))*longScale;
         return true;
     }
 }
