@@ -39,7 +39,7 @@ namespace REDIS_NAMESPACE
 
         if (!passwordMatch)
         {
-            encode_error(&c.client->write_buffer, "WRONGPASS invalid username-password pair or user is disabled");
+            encode_bulk_string(&c.client->write_buffer, "WRONGPASS invalid username-password pair or user is disabled");
             c.current_write_position = 0;
             return;
         }
