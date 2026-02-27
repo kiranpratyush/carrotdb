@@ -155,9 +155,17 @@ namespace REDIS_NAMESPACE
     }
 
     // Encode a RESP Error (-ERR <message>\r\n)
-    inline void encode_error(std::string *buffer, std::string_view message)
+    inline void encode_error(std::string *buffer, std::string_view message, bool isWrongType = false)
     {
-        buffer->append("-ERR ");
+        if (isWrongType)
+        {
+            buffer->append("-WRONGTYPE");
+        }
+        else
+        {
+            buffer->append("-ERR ");
+        }
+
         buffer->append(message);
         buffer->append("\r\n");
     }
@@ -184,7 +192,7 @@ namespace REDIS_NAMESPACE
     {
         unsigned char hash[SHA256_DIGEST_LENGTH];
         SHA256(reinterpret_cast<const unsigned char *>(input.c_str()), input.length(), hash);
-        
+
         std::string result;
         result.reserve(SHA256_DIGEST_LENGTH * 2);
         for (int i = 0; i < SHA256_DIGEST_LENGTH; i++)
