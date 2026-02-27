@@ -159,7 +159,7 @@ namespace REDIS_NAMESPACE
     {
         if (isWrongType)
         {
-            buffer->append("-WRONGTYPE");
+            buffer->append("-WRONGPASS");
         }
         else
         {
